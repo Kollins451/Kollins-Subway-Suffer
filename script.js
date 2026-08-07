@@ -1,40 +1,42 @@
 // ============================================
-// KOLLINS SUBWAY SUFFER - GAME ENGINE
+// KOLLINS SUBWAY SUFFER - NEW GAME ENGINE
 // PART 1/3
 // ============================================
 
-let scene, camera, renderer;
-let player, chaser;
+let scene;
+let camera;
+let renderer;
+
+let player;
+let chaser;
+
+let gameActive = false;
 
 let currentLane = 0;
 const laneWidth = 3.3;
 
+let score = 0;
+let coinsCollected = 0;
+
+let speed = 0.35;
+const maxSpeed = 1;
+
 let obstacles = [];
 let coins = [];
-let sceneryItems = [];
-
-let score = 0;
-let sessionCoins = 0;
-
-let gameActive = false;
-
-let speed = 0.28;
-const maxSpeed = 0.85;
+let vehicles = [];
 
 let isJumping = false;
-let isSliding = false;
+let jumpPower = 0;
+const gravity = 0.018;
 
-let yVelocity = 0;
-const gravity = 0.016;
-const jumpForce = 0.38;
+let gameMode = "RUNNING";
+// RUNNING
+// CAR
+// POLICE
+// HELICOPTER
+// AIRPLANE
 
-let isHoverboardActive = false;
-let isMagnetActive = false;
-let isJetpackActive = false;
-
-let chaserDistance = 6;
-
-let spawnTimeoutRef = null;
+let vehicleActive = false;
 
 
 // ============================================
@@ -45,16 +47,11 @@ function init(){
 
     scene = new THREE.Scene();
 
-    scene.background = new THREE.Color(0xa3e2f7);
-
-    scene.fog = new THREE.FogExp2(
-        0xa3e2f7,
-        0.009
-    );
+    scene.background = new THREE.Color(0x87ceeb);
 
 
     camera = new THREE.PerspectiveCamera(
-        65,
+        70,
         window.innerWidth / window.innerHeight,
         0.1,
         1000
@@ -63,15 +60,15 @@ function init(){
 
     camera.position.set(
         0,
-        5.5,
-        7.5
+        5,
+        8
     );
 
 
     camera.lookAt(
         0,
-        2,
-        -4
+        1,
+        -10
     );
 
 
@@ -93,49 +90,46 @@ function init(){
 
 
 
-    let light = new THREE.AmbientLight(
+    let light = new THREE.DirectionalLight(
         0xffffff,
-        0.8
+        1
     );
 
-    scene.add(light);
-
-
-
-    let sun = new THREE.DirectionalLight(
-        0xffffff,
-        0.8
-    );
-
-
-    sun.position.set(
+    light.position.set(
         10,
         20,
         10
     );
 
+    scene.add(light);
 
-    scene.add(sun);
+
+    scene.add(
+        new THREE.AmbientLight(
+            0xffffff,
+            0.5
+        )
+    );
 
 
 
     createWorld();
 
-    createPlayer();
+    createRunner();
 
-    createChaser();
+    createPolice();
 
-
-
-    window.addEventListener(
-        "keydown",
-        handleKeyboardControls
-    );
 
 
     window.addEventListener(
         "resize",
-        onWindowResize
+        resizeGame
+    );
+
+
+    window.addEventListener(
+        "keydown",
+        controls
     );
 
 
@@ -150,9 +144,9 @@ function init(){
 
     document
     .getElementById("retry-btn")
-    .addEventListener(
+    ?.addEventListener(
         "click",
-        resetGame
+        startGame
     );
 
 
@@ -163,15 +157,16 @@ function init(){
 
 
 // ============================================
-// CREATE SUBWAY WORLD
+// CREATE WORLD
 // ============================================
 
 function createWorld(){
 
+
     let ground = new THREE.Mesh(
 
         new THREE.PlaneGeometry(
-            16,
+            20,
             3000
         ),
 
@@ -183,16 +178,20 @@ function createWorld(){
 
 
     ground.rotation.x =
-        -Math.PI/2;
+    -Math.PI/2;
 
 
     ground.position.z =
-        -1000;
+    -1000;
 
 
-    scene.add(ground);
+    scene.add(
+        ground
+    );
 
 
+
+    // railway lines
 
     for(
         let i=-1;
@@ -204,13 +203,13 @@ function createWorld(){
         new THREE.Mesh(
 
             new THREE.BoxGeometry(
-                0.25,
-                0.15,
+                0.2,
+                0.1,
                 3000
             ),
 
             new THREE.MeshStandardMaterial({
-                color:0x888888
+                color:0xaaaaaa
             })
 
         );
@@ -218,16 +217,20 @@ function createWorld(){
 
         rail.position.set(
             i * laneWidth,
-            0.1,
+            0.05,
             -1000
         );
 
 
-        scene.add(rail);
+        scene.add(
+            rail
+        );
 
     }
 
 
+
+    // buildings
 
     for(
         let z=0;
@@ -235,7 +238,7 @@ function createWorld(){
         z-=40
     ){
 
-        createWall(z);
+        createBuilding(z);
 
     }
 
@@ -243,58 +246,62 @@ function createWorld(){
 
 
 
+function createBuilding(z){
 
-function createWall(z){
 
-
-    let wall =
+    let building =
     new THREE.Mesh(
 
         new THREE.BoxGeometry(
-            1.5,
+            3,
             8,
-            10
+            8
         ),
 
         new THREE.MeshStandardMaterial({
-            color:0x765341
+            color:0x555555
         })
 
     );
 
 
-    wall.position.set(
-        -11,
+    building.position.set(
+        -12,
         4,
         z
     );
 
 
-    scene.add(wall);
+    scene.add(
+        building
+    );
 
 
-    let wall2 =
-    wall.clone();
+
+    let building2 =
+    building.clone();
 
 
-    wall2.position.x =
-        11;
+    building2.position.x =
+    12;
 
 
-    scene.add(wall2);
+    scene.add(
+        building2
+    );
 
 }
 
 
 
 // ============================================
-// CREATE PLAYER
+// CREATE RUNNER
 // ============================================
 
-function createPlayer(){
+function createRunner(){
 
-    player =
-    new THREE.Group();
+
+    player = new THREE.Group();
 
 
 
@@ -302,20 +309,20 @@ function createPlayer(){
     new THREE.Mesh(
 
         new THREE.BoxGeometry(
-            0.9,
-            1.2,
-            0.7
+            1,
+            1.4,
+            0.8
         ),
 
         new THREE.MeshStandardMaterial({
-            color:0xff5722
+            color:0xff5500
         })
 
     );
 
 
     body.position.y =
-        1;
+    1;
 
 
     player.add(body);
@@ -325,21 +332,21 @@ function createPlayer(){
     let head =
     new THREE.Mesh(
 
-        new THREE.BoxGeometry(
-            0.6,
-            0.5,
-            0.6
+        new THREE.SphereGeometry(
+            0.45,
+            16,
+            16
         ),
 
         new THREE.MeshStandardMaterial({
-            color:0xffcc80
+            color:0xffcc99
         })
 
     );
 
 
     head.position.y =
-        1.8;
+    2;
 
 
     player.add(head);
@@ -347,33 +354,35 @@ function createPlayer(){
 
 
     player.position.z =
-        0;
+    0;
 
 
-    scene.add(player);
+    scene.add(
+        player
+    );
 
 }
 
 
 
 // ============================================
-// CREATE CHASER
+// CREATE POLICE CHASER
 // ============================================
 
-function createChaser(){
+function createPolice(){
 
 
     chaser =
     new THREE.Mesh(
 
         new THREE.BoxGeometry(
-            1,
+            1.2,
             2,
-            1
+            1.5
         ),
 
         new THREE.MeshStandardMaterial({
-            color:0x0033aa
+            color:0x0000ff
         })
 
     );
@@ -382,150 +391,32 @@ function createChaser(){
     chaser.position.set(
         0,
         1,
-        chaserDistance
+        10
     );
 
 
-    scene.add(chaser);
+    scene.add(
+        chaser
+    );
 
 }
 // ============================================
-// BUTTON + GAME START FIX
+// KOLLINS SUBWAY SURFER GAME ENGINE
+// PART 2/3
+// GAMEPLAY SYSTEMS
 // ============================================
-
-function startGame(){
-
-    const menu = document.getElementById("menu-screen");
-
-    if(menu){
-        menu.classList.add("hidden");
-    }
-
-    gameActive = true;
-
-    score = 0;
-    sessionCoins = 0;
-
-    const scoreDisplay = document.getElementById("score-val");
-    const coinDisplay = document.getElementById("coin-val");
-
-    if(scoreDisplay){
-        scoreDisplay.innerText = score;
-    }
-
-    if(coinDisplay){
-        coinDisplay.innerText = sessionCoins;
-    }
-
-    // Start spawning items if function exists
-    if(typeof spawnProceduralItemsLoop === "function"){
-        spawnProceduralItemsLoop();
-    }
-
-}
-
-
-
-function resetGame(){
-
-    const gameOver =
-    document.getElementById("gameover-screen");
-
-    if(gameOver){
-        gameOver.classList.add("hidden");
-    }
-
-    startGame();
-
-}
-
 
 
 // ============================================
-// CONNECT BUTTONS AFTER PAGE LOAD
-// ============================================
-
-window.addEventListener("DOMContentLoaded",()=>{
-
-
-    const playButton =
-    document.getElementById("play-btn");
-
-
-    const retryButton =
-    document.getElementById("retry-btn");
-
-
-
-    if(playButton){
-
-        playButton.addEventListener(
-            "click",
-            startGame
-        );
-
-    }
-
-
-
-    if(retryButton){
-
-        retryButton.addEventListener(
-            "click",
-            resetGame
-        );
-
-    }
-
-
-
-    if(typeof init === "function"){
-
-        init();
-
-    }
-
-
-});
-// ============================================
-// GAME ANIMATION LOOP
-// ============================================
-
-function animate(){
-
-    requestAnimationFrame(animate);
-
-
-    if(gameActive){
-
-        updatePlayer();
-        updateObjects();
-
-    }
-
-
-    if(renderer && scene && camera){
-
-        renderer.render(
-            scene,
-            camera
-        );
-
-    }
-
-}
-
-
-
-// ============================================
-// PLAYER MOVEMENT
+// PLAYER MOVEMENT & ANIMATION
 // ============================================
 
 function updatePlayer(){
 
+    if(!player) return;
+
 
     // Jump physics
-
     if(isJumping){
 
         player.position.y += yVelocity;
@@ -533,9 +424,9 @@ function updatePlayer(){
         yVelocity -= gravity;
 
 
-        if(player.position.y <= 0.05){
+        if(player.position.y <= 0){
 
-            player.position.y = 0.05;
+            player.position.y = 0;
 
             isJumping = false;
 
@@ -546,7 +437,8 @@ function updatePlayer(){
     }
 
 
-    // Move player between lanes
+
+    // Lane movement smooth animation
 
     let targetX = currentLane * laneWidth;
 
@@ -556,29 +448,61 @@ function updatePlayer(){
 
 
 
+    // Running animation
+
+    if(gameActive){
+
+        player.rotation.z =
+        Math.sin(Date.now()*0.01)*0.05;
+
+    }
+
+
 }
 
 
 
 // ============================================
-// OBJECT MOVEMENT
+// MOVING OBJECTS SYSTEM
 // ============================================
 
 function updateObjects(){
 
 
-    obstacles.forEach((object,index)=>{
+    // Obstacles
+
+    obstacles.forEach((obj,index)=>{
 
 
-        object.position.z += speed;
+        obj.position.z += speed;
 
 
 
-        if(object.position.z > 10){
+        if(obj.position.z > 10){
 
-            scene.remove(object);
+            scene.remove(obj);
 
             obstacles.splice(index,1);
+
+        }
+
+
+
+        // Collision detection
+
+        if(player && obj){
+
+            let distance =
+            player.position.distanceTo(
+                obj.position
+            );
+
+
+            if(distance < 1.5){
+
+                gameOver();
+
+            }
 
         }
 
@@ -587,10 +511,49 @@ function updateObjects(){
 
 
 
+
+    // Coins
+
     coins.forEach((coin,index)=>{
 
 
         coin.position.z += speed;
+
+
+        coin.rotation.y += 0.1;
+
+
+
+        if(
+            player &&
+            player.position.distanceTo(
+                coin.position
+            ) < 1.2
+        ){
+
+            score += 10;
+
+            sessionCoins++;
+
+
+            document.getElementById(
+                "score-val"
+            ).innerText = score;
+
+
+
+            document.getElementById(
+                "coin-val"
+            ).innerText = sessionCoins;
+
+
+
+            scene.remove(coin);
+
+            coins.splice(index,1);
+
+
+        }
 
 
 
@@ -607,11 +570,11 @@ function updateObjects(){
 
 
 
-    // Increase difficulty slowly
+    // Increase speed
 
     if(speed < maxSpeed){
 
-        speed += 0.00005;
+        speed += 0.00003;
 
     }
 
@@ -620,20 +583,307 @@ function updateObjects(){
 
 
 
+
+// ============================================
+// SPAWN SYSTEM
+// CARS - TRAINS - HELICOPTERS - PLANES
+// ============================================
+
+function spawnProceduralItemsLoop(){
+
+
+    if(!gameActive)
+    return;
+
+
+
+    let lane =
+    [-laneWidth,0,laneWidth]
+    [
+        Math.floor(
+            Math.random()*3
+        )
+    ];
+
+
+
+    let random =
+    Math.random();
+
+
+
+    // TRAIN
+
+    if(random < 0.20){
+
+
+        let train =
+        new THREE.Mesh(
+
+            new THREE.BoxGeometry(
+                3,
+                3,
+                15
+            ),
+
+            new THREE.MeshStandardMaterial({
+                color:0x555555
+            })
+
+        );
+
+
+        train.position.set(
+            lane,
+            1.5,
+            -150
+        );
+
+
+        scene.add(train);
+
+        obstacles.push(train);
+
+
+
+    }
+
+
+
+    // POLICE CAR
+
+    else if(random < 0.40){
+
+
+        let car =
+        new THREE.Mesh(
+
+            new THREE.BoxGeometry(
+                2,
+                1,
+                4
+            ),
+
+            new THREE.MeshStandardMaterial({
+                color:0x111111
+            })
+
+        );
+
+
+        car.position.set(
+            lane,
+            0.5,
+            -150
+        );
+
+
+        scene.add(car);
+
+        obstacles.push(car);
+
+
+    }
+
+
+
+    // HELICOPTER EVENT
+
+    else if(random < 0.55){
+
+
+        let helicopter =
+        new THREE.Mesh(
+
+            new THREE.BoxGeometry(
+                2,
+                0.5,
+                4
+            ),
+
+            new THREE.MeshStandardMaterial({
+                color:0x0066ff
+            })
+
+        );
+
+
+        helicopter.position.set(
+            lane,
+            8,
+            -150
+        );
+
+
+        scene.add(helicopter);
+
+        obstacles.push(helicopter);
+
+
+    }
+
+
+
+    // AIRPLANE EVENT
+
+    else if(random < 0.65){
+
+
+        let plane =
+        new THREE.Mesh(
+
+            new THREE.BoxGeometry(
+                3,
+                0.5,
+                8
+            ),
+
+            new THREE.MeshStandardMaterial({
+                color:0xffffff
+            })
+
+        );
+
+
+        plane.position.set(
+            lane,
+            12,
+            -150
+        );
+
+
+        scene.add(plane);
+
+        obstacles.push(plane);
+
+
+    }
+
+
+
+    // COINS
+
+    else{
+
+
+        createCoins(lane);
+
+
+    }
+
+
+
+
+    setTimeout(
+        spawnProceduralItemsLoop,
+        1000
+    );
+
+
+}
+
+
+
+
+
+// ============================================
+// COIN CREATOR
+// ============================================
+
+function createCoins(lane){
+
+
+    for(
+        let i=0;
+        i<5;
+        i++
+    ){
+
+
+        let coin =
+        new THREE.Mesh(
+
+            new THREE.CylinderGeometry(
+                0.4,
+                0.4,
+                0.15,
+                20
+            ),
+
+            new THREE.MeshStandardMaterial({
+                color:0xffd700,
+                metalness:1
+            })
+
+        );
+
+
+
+        coin.rotation.x =
+        Math.PI/2;
+
+
+
+        coin.position.set(
+            lane,
+            1,
+            -100-(i*5)
+        );
+
+
+
+        scene.add(coin);
+
+        coins.push(coin);
+
+
+    }
+
+
+}
+
+
+
+
+// ============================================
+// GAME OVER
+// ============================================
+
+function gameOver(){
+
+
+    gameActive=false;
+
+
+    document
+    .getElementById(
+        "gameover-screen"
+    )
+    .classList.remove("hidden");
+
+
+}
+// ============================================
+// KOLLINS SUBWAY SURFER GAME ENGINE
+// PART 3/3
+// CONTROLS + EFFECTS + FINAL CONNECTION
+// ============================================
+
+
 // ============================================
 // KEYBOARD CONTROLS
 // ============================================
 
 function handleKeyboardControls(e){
 
-
     if(!gameActive) return;
 
 
-    let key =
-    e.key.toLowerCase();
+    let key = e.key.toLowerCase();
 
 
+
+    // Move left
 
     if(
         key === "arrowleft" ||
@@ -650,6 +900,8 @@ function handleKeyboardControls(e){
 
 
 
+    // Move right
+
     if(
         key === "arrowright" ||
         key === "d"
@@ -664,6 +916,8 @@ function handleKeyboardControls(e){
     }
 
 
+
+    // Jump
 
     if(
         key === "arrowup" ||
@@ -682,120 +936,274 @@ function handleKeyboardControls(e){
     }
 
 
-}
-// ============================================
-// SPAWN OBJECTS
-// ============================================
 
-function spawnProceduralItemsLoop(){
+    // Slide
 
-    if(!gameActive) return;
+    if(
+        key === "arrowdown" ||
+        key === "s"
+    ){
 
-
-    let lanes = [
-        -laneWidth,
-        0,
-        laneWidth
-    ];
+        isSliding = true;
 
 
-    let lane =
-    lanes[Math.floor(Math.random()*lanes.length)];
+        setTimeout(()=>{
 
+            isSliding=false;
 
-
-    let type =
-    Math.random();
-
-
-
-    if(type < 0.5){
-
-
-        let obstacle =
-        new THREE.Mesh(
-
-            new THREE.BoxGeometry(
-                2,
-                2,
-                2
-            ),
-
-            new THREE.MeshStandardMaterial({
-                color:0xff0000
-            })
-
-        );
-
-
-        obstacle.position.set(
-            lane,
-            1,
-            -100
-        );
-
-
-        scene.add(obstacle);
-
-        obstacles.push(obstacle);
-
-
-    }else{
-
-
-        let coin =
-        new THREE.Mesh(
-
-            new THREE.CylinderGeometry(
-                0.4,
-                0.4,
-                0.15,
-                20
-            ),
-
-            new THREE.MeshStandardMaterial({
-                color:0xffff00
-            })
-
-        );
-
-
-        coin.rotation.x =
-        Math.PI/2;
-
-
-        coin.position.set(
-            lane,
-            1,
-            -100
-        );
-
-
-        scene.add(coin);
-
-        coins.push(coin);
-
+        },500);
 
     }
 
 
+}
 
-    setTimeout(
-        spawnProceduralItemsLoop,
-        1200
+
+
+
+
+// ============================================
+// TOUCH CONTROL FOR MOBILE
+// ============================================
+
+function setupTouchSwipeControls(){
+
+
+    let startX=0;
+    let startY=0;
+
+
+
+    window.addEventListener(
+        "touchstart",
+        e=>{
+
+            startX =
+            e.touches[0].clientX;
+
+
+            startY =
+            e.touches[0].clientY;
+
+        }
     );
+
+
+
+
+    window.addEventListener(
+        "touchend",
+        e=>{
+
+
+            if(!gameActive)
+            return;
+
+
+
+            let endX =
+            e.changedTouches[0].clientX;
+
+
+            let endY =
+            e.changedTouches[0].clientY;
+
+
+
+            let x =
+            endX-startX;
+
+
+            let y =
+            endY-startY;
+
+
+
+
+            if(x > 50){
+
+                if(currentLane < 1)
+                currentLane++;
+
+            }
+
+
+            if(x < -50){
+
+                if(currentLane > -1)
+                currentLane--;
+
+            }
+
+
+
+            if(y < -50){
+
+                if(!isJumping){
+
+                    isJumping=true;
+
+                    yVelocity=jumpForce;
+
+                }
+
+            }
+
+
+
+        }
+    );
+
 
 }
 
 
 
+
+
 // ============================================
-// WINDOW RESIZE FIX
+// HOVERBOARD SYSTEM
+// ============================================
+
+function activateHoverboard(){
+
+
+    if(!player)
+    return;
+
+
+    isHoverboardActive=true;
+
+
+    player.scale.y=1.2;
+
+
+
+    setTimeout(()=>{
+
+
+        isHoverboardActive=false;
+
+        player.scale.y=1;
+
+
+
+    },5000);
+
+
+}
+
+
+
+
+
+// ============================================
+// FOOTBALL KICK FEATURE ⚽
+// ============================================
+
+function createFootball(){
+
+
+    let ball =
+    new THREE.Mesh(
+
+        new THREE.SphereGeometry(
+            0.35,
+            20,
+            20
+        ),
+
+
+        new THREE.MeshStandardMaterial({
+
+            color:0xffffff
+
+        })
+
+    );
+
+
+
+    ball.position.set(
+
+        player.position.x,
+
+        0.5,
+
+        -2
+
+    );
+
+
+
+    scene.add(ball);
+
+
+
+    let kick = setInterval(()=>{
+
+
+        ball.position.z -= 1;
+
+
+
+        ball.rotation.x +=0.3;
+
+
+
+        if(ball.position.z < -100){
+
+            clearInterval(kick);
+
+            scene.remove(ball);
+
+        }
+
+
+    },30);
+
+
+
+}
+
+
+
+
+
+// Press F to kick football
+
+window.addEventListener(
+"keydown",
+e=>{
+
+
+    if(
+        e.key.toLowerCase()=="f"
+        &&
+        gameActive
+    ){
+
+        createFootball();
+
+    }
+
+
+});
+
+
+
+
+
+// ============================================
+// RESIZE FIX
 // ============================================
 
 function onWindowResize(){
 
-    if(!camera || !renderer) return;
+
+    if(!camera || !renderer)
+    return;
+
 
 
     camera.aspect =
@@ -806,92 +1214,95 @@ function onWindowResize(){
     camera.updateProjectionMatrix();
 
 
+
     renderer.setSize(
+
         window.innerWidth,
+
         window.innerHeight
+
     );
+
 
 }
 
 
 
+
+
 // ============================================
-// START GAME TOUCH SUPPORT
+// START BUTTON FINAL CONNECTION
 // ============================================
 
-function setupTouchSwipeControls(){
+window.addEventListener(
+"DOMContentLoaded",
+()=>{
 
-    let startX = 0;
+
+    const play =
+    document.getElementById(
+        "play-btn"
+    );
 
 
-    window.addEventListener(
-        "touchstart",
-        e=>{
-
-            startX =
-            e.touches[0].clientX;
-
-        }
+    const retry =
+    document.getElementById(
+        "retry-btn"
     );
 
 
 
-    window.addEventListener(
-        "touchend",
-        e=>{
+    if(play){
 
-
-            if(!gameActive) return;
-
-
-            let endX =
-            e.changedTouches[0].clientX;
-
-
-            let difference =
-            endX - startX;
-
-
-
-            if(difference > 50){
-
-                if(currentLane < 1)
-                currentLane++;
-
-            }
-
-
-            if(difference < -50){
-
-                if(currentLane > -1)
-                currentLane--;
-
-            }
-
-
-        }
-    );
-
-}
-
-
-
-// ============================================
-// AUTO START SPAWNER AFTER INIT
-// ============================================
-
-let oldStartGame = startGame;
-
-
-startGame = function(){
-
-    oldStartGame();
-
-
-    if(!spawnTimeoutRef){
-
-        spawnProceduralItemsLoop();
+        play.onclick =
+        startGame;
 
     }
 
-};
+
+
+    if(retry){
+
+        retry.onclick =
+        resetGame;
+
+    }
+
+
+
+    init();
+
+
+});
+
+
+
+
+
+// ============================================
+// RESET GAME
+// ============================================
+
+function resetGame(){
+
+
+    document
+    .getElementById(
+        "gameover-screen"
+    )
+    .classList.add(
+        "hidden"
+    );
+
+
+    score=0;
+
+    sessionCoins=0;
+
+    speed=0.28;
+
+
+    startGame();
+
+
+}
