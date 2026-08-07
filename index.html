@@ -1,14 +1,15 @@
-<!-- index.html -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Subway Surfers Web Edition</title>
-    <!-- Include Three.js Library -->
+    <!-- Core Three.js Graphics Library -->
     <script src="https://cloudflare.com"></script>
     <style>
-        /* CSS Panel Embedded for Single-File Convenience */
+        /* ==========================================
+           CORE LAYOUT & INTERFACE RESET
+           ========================================== */
         * {
             margin: 0;
             padding: 0;
@@ -132,10 +133,8 @@
             transform: scale(0.95) translateY(5px);
             box-shadow: none;
         }
-        /* Hide classes dynamically toggled */
         .hidden { display: none !important; }
         
-        /* Mobile instructions overlay footer */
         #controls-hint {
             position: absolute;
             bottom: 15px;
@@ -168,7 +167,7 @@
             <div id="jetpack-progress" class="progress-fill" style="background: #00ffcc;"></div>
         </div>
         <div id="board-timer" class="powerup-bar hidden">
-            HOVERBOARD BOARD SHIELD
+            HOVERBOARD SHIELD ACTIVE
             <div id="board-progress" class="progress-fill" style="background: #ff3399;"></div>
         </div>
     </div>
@@ -191,49 +190,42 @@
     <div id="controls-hint">Desktop: A/D or Arrows to Move | W/Space to Jump | S to Slide | Double Click / E to deploy Hoverboard</div>
 
     <!-- ========================================== -->
-    <!-- JAVASCRIPT GAME ENGINE PRODUCTION LAYER -->
+    <!-- JAVASCRIPT GAME ENGINE PRODUCTION LAYER    -->
     <!-- ========================================== -->
     <script>
-        // Core Framework Elements
         let scene, camera, renderer;
         let player, chaser;
-        let currentLane = 0; // -1 = Left, 0 = Center, 1 = Right
+        let currentLane = 0; 
         const laneWidth = 3.3;
         
-        // Entity Pools Tracking Maps
         let obstacles = [];
         let coins = [];
         let sceneryItems = [];
 
-        // Game State Quantifiers
         let score = 0;
         let sessionCoins = 0;
+        let scoreMultiplier = 1;
         let gameActive = false;
         let speed = 0.28;
         const maxSpeed = 0.85;
 
-        // Structural Mechanics Parameters
         let isJumping = false;
         let isSliding = false;
         let yVelocity = 0;
         const gravity = 0.016;
         const jumpForce = 0.38;
 
-        // Subway Surfers Distinct Rule Mechanics Flag states
         let isHoverboardActive = false;
         let isMagnetActive = false;
         let isJetpackActive = false;
-        let chaserDistance = 6.0; // Distance trailing behind player matrix unit
+        let chaserDistance = 6.0; 
 
-        // Timer references for cleaning logic loop tracks
         let timers = { magnet: null, jetpack: null, board: null };
         let spawnTimeoutRef = null;
 
-        // Initialize engine framework components upon script boot load hooks
         function init() {
-            // Environment Setup
             scene = new THREE.Scene();
-            scene.background = new THREE.Color(0xa3e2f7); // Sky Box Color tint
+            scene.background = new THREE.Color(0xa3e2f7); 
             scene.fog = new THREE.FogExp2(0xa3e2f7, 0.009);
 
             camera = new THREE.PerspectiveCamera(65, window.innerWidth / window.innerHeight, 0.1, 1000);
@@ -245,31 +237,25 @@
             renderer.shadowMap.enabled = true;
             document.body.appendChild(renderer.domElement);
 
-            // Light Systems setup
             const ambientLight = new THREE.AmbientLight(0xffffff, 0.75);
             scene.add(ambientLight);
             const sunLight = new THREE.DirectionalLight(0xffffff, 0.85);
             sunLight.position.set(15, 40, 20);
             scene.add(sunLight);
 
-            // Populate persistent world infrastructure structures
             buildSubwayGridEnvironment();
             buildPlayerModelCharacter();
             buildInspectorChaserModel();
 
-            // Hook Core Control listeners
             window.addEventListener('keydown', handleKeyboardControls);
             setupTouchSwipeControls();
             window.addEventListener('resize', onWindowResize);
             window.addEventListener('dblclick', () => { if(gameActive) activateHoverboard(); });
 
-            // Initialize total display balance tracker storage
             document.getElementById('banked-coins').innerText = localStorage.getItem('subway_total_coins') || 0;
         }
 
-        // Generate procedural running ground infrastructure channels
         function buildSubwayGridEnvironment() {
-            // Main Base Track Floor Plate Bedding
             const bedGeo = new THREE.PlaneGeometry(16, 3000);
             const bedMat = new THREE.MeshStandardMaterial({ color: 0x3a3a3a, roughness: 0.9 });
             const bedMesh = new THREE.Mesh(bedGeo, bedMat);
@@ -277,8 +263,33 @@
             bedMesh.position.z = -1000;
             scene.add(bedMesh);
 
-            // Standard triple lane steel rail tracks running layouts
             for (let i = -1; i <= 1; i++) {
                 const railLineGeo = new THREE.BoxGeometry(0.25, 0.15, 3000);
                 const railLineMat = new THREE.MeshStandardMaterial({ color: 0x888888, metalness: 0.7 });
                 const rail = new THREE.Mesh(railLineGeo, railLineMat);
+                rail.position.set(i * laneWidth, 0.075, -1000);
+                scene.add(rail);
+            }
+
+            for (let z = 0; z > -1500; z -= 45) {
+                spawnSideSceneryPillars(z);
+            }
+        }
+
+        function spawnSideSceneryPillars(zPos) {
+            const wallGeo = new THREE.BoxGeometry(1.5, 8, 10);
+            const wallMat = new THREE.MeshStandardMaterial({ color: 0x7a6350 });
+            
+            const leftWall = new THREE.Mesh(wallGeo, wallMat);
+            leftWall.position.set(-11, 4, zPos);
+            scene.add(leftWall);
+            sceneryItems.push(leftWall);
+
+            const rightWall = leftWall.clone();
+            rightWall.position.x = 11;
+            scene.add(rightWall);
+            sceneryItems.push(rightWall);
+        }
+
+        function buildPlayerModelCharacter() {
+            player = new THREE.Group();
