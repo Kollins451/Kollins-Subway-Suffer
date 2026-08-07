@@ -10,8 +10,9 @@
 // 🪙 Coins
 // 🚧 Obstacles
 // 👆 Mobile swipe controls
-// 📱 Mobile action buttons
+// 📱 Bottom mobile action buttons
 // 🎮 Keyboard controls
+// ▶️ Tap to Play
 // ============================================================
 
 
@@ -83,30 +84,33 @@ let lastFrameTime = performance.now();
 
 function init() {
 
-    // Prevent duplicate initialization
     if (renderer) return;
 
     scene = new THREE.Scene();
 
-    scene.background = new THREE.Color(0x76c7e8);
+    scene.background =
+        new THREE.Color(0x76c7e8);
 
-    scene.fog = new THREE.Fog(
-        0x76c7e8,
-        35,
-        180
-    );
+    scene.fog =
+        new THREE.Fog(
+            0x76c7e8,
+            35,
+            180
+        );
 
 
     // --------------------------------------------------------
     // CAMERA
     // --------------------------------------------------------
 
-    camera = new THREE.PerspectiveCamera(
-        65,
-        window.innerWidth / window.innerHeight,
-        0.1,
-        1000
-    );
+    camera =
+        new THREE.PerspectiveCamera(
+            65,
+            window.innerWidth /
+            window.innerHeight,
+            0.1,
+            1000
+        );
 
     camera.position.set(
         0,
@@ -125,12 +129,16 @@ function init() {
     // RENDERER
     // --------------------------------------------------------
 
-    renderer = new THREE.WebGLRenderer({
-        antialias: true
-    });
+    renderer =
+        new THREE.WebGLRenderer({
+            antialias: true
+        });
 
     renderer.setPixelRatio(
-        Math.min(window.devicePixelRatio, 2)
+        Math.min(
+            window.devicePixelRatio,
+            2
+        )
     );
 
     renderer.setSize(
@@ -149,10 +157,17 @@ function init() {
     );
 
 
-    renderer.domElement.style.position = "fixed";
-    renderer.domElement.style.top = "0";
-    renderer.domElement.style.left = "0";
-    renderer.domElement.style.zIndex = "0";
+    renderer.domElement.style.position =
+        "fixed";
+
+    renderer.domElement.style.top =
+        "0";
+
+    renderer.domElement.style.left =
+        "0";
+
+    renderer.domElement.style.zIndex =
+        "0";
 
 
     // --------------------------------------------------------
@@ -207,50 +222,19 @@ function init() {
         handleKeyboard
     );
 
-
     window.addEventListener(
         "resize",
         onWindowResize
     );
 
-
     setupTouchControls();
 
 
     // --------------------------------------------------------
-    // BUTTONS
+    // PLAY / RETRY BUTTONS
     // --------------------------------------------------------
 
-    const playButton =
-        document.getElementById("play-btn");
-
-    if (playButton) {
-
-        playButton.onclick = function(event) {
-
-            event.preventDefault();
-
-            startGame();
-
-        };
-
-    }
-
-
-    const retryButton =
-        document.getElementById("retry-btn");
-
-    if (retryButton) {
-
-        retryButton.onclick = function(event) {
-
-            event.preventDefault();
-
-            resetGame();
-
-        };
-
-    }
+    setupPlayButtons();
 
 
     animate();
@@ -258,12 +242,170 @@ function init() {
 
 
 // ============================================================
-// 3. WORLD
+// 3. PLAY BUTTON SYSTEM
+// ============================================================
+
+function setupPlayButtons() {
+
+    // --------------------------------------------------------
+    // NORMAL PLAY BUTTON
+    // --------------------------------------------------------
+
+    const playButton =
+        document.getElementById(
+            "play-btn"
+        );
+
+    if (playButton) {
+
+        playButton.onclick =
+            function(e) {
+
+                e.preventDefault();
+                e.stopPropagation();
+
+                startGame();
+
+            };
+
+
+        playButton.ontouchend =
+            function(e) {
+
+                e.preventDefault();
+                e.stopPropagation();
+
+                startGame();
+
+            };
+
+    }
+
+
+    // --------------------------------------------------------
+    // RETRY BUTTON
+    // --------------------------------------------------------
+
+    const retryButton =
+        document.getElementById(
+            "retry-btn"
+        );
+
+    if (retryButton) {
+
+        retryButton.onclick =
+            function(e) {
+
+                e.preventDefault();
+                e.stopPropagation();
+
+                resetGame();
+
+            };
+
+
+        retryButton.ontouchend =
+            function(e) {
+
+                e.preventDefault();
+                e.stopPropagation();
+
+                resetGame();
+
+            };
+
+    }
+
+
+    // --------------------------------------------------------
+    // TAP MENU TO PLAY
+    // --------------------------------------------------------
+
+    const menuScreen =
+        document.getElementById(
+            "menu-screen"
+        );
+
+    if (menuScreen) {
+
+        let tapLocked = false;
+
+
+        function playFromMenu(e) {
+
+            if (
+                e.target &&
+                (
+                    e.target.id ===
+                    "play-btn" ||
+
+                    e.target.closest(
+                        "#play-btn"
+                    )
+                )
+            ) {
+
+                return;
+
+            }
+
+
+            if (
+                gameActive ||
+                tapLocked
+            ) {
+
+                return;
+
+            }
+
+
+            tapLocked = true;
+
+
+            e.preventDefault();
+            e.stopPropagation();
+
+
+            startGame();
+
+
+            setTimeout(
+                function() {
+
+                    tapLocked = false;
+
+                },
+                500
+            );
+
+        }
+
+
+        menuScreen.addEventListener(
+            "touchend",
+            playFromMenu,
+            {
+                passive: false
+            }
+        );
+
+
+        menuScreen.addEventListener(
+            "click",
+            playFromMenu
+        );
+
+    }
+
+}
+
+
+// ============================================================
+// 4. WORLD
 // ============================================================
 
 function createWorld() {
-
-    // Ground
 
     const ground =
         new THREE.Mesh(
@@ -284,10 +426,8 @@ function createWorld() {
     ground.rotation.x =
         -Math.PI / 2;
 
-
     ground.position.z =
         -1500;
-
 
     ground.receiveShadow = true;
 
@@ -298,7 +438,11 @@ function createWorld() {
     // TRACK LANES
     // --------------------------------------------------------
 
-    for (let i = -1; i <= 1; i++) {
+    for (
+        let i = -1;
+        i <= 1;
+        i++
+    ) {
 
         const rail =
             new THREE.Mesh(
@@ -322,7 +466,6 @@ function createWorld() {
             0.08,
             -1500
         );
-
 
         scene.add(rail);
 
@@ -361,14 +504,13 @@ function createWorld() {
             z
         );
 
-
         scene.add(sleeper);
 
     }
 
 
     // --------------------------------------------------------
-    // SIDE BUILDINGS
+    // BUILDINGS
     // --------------------------------------------------------
 
     for (
@@ -391,7 +533,7 @@ function createWorld() {
 
 
     // --------------------------------------------------------
-    // LIGHT POLES
+    // LIGHTS
     // --------------------------------------------------------
 
     for (
@@ -416,19 +558,22 @@ function createWorld() {
 
 
 // ============================================================
-// 4. BUILDINGS
+// 5. BUILDINGS
 // ============================================================
 
 function createBuilding(x, z) {
 
     const height =
-        7 + Math.random() * 10;
+        7 +
+        Math.random() * 10;
+
 
     const building =
         new THREE.Mesh(
 
             new THREE.BoxGeometry(
-                4 + Math.random() * 3,
+                4 +
+                Math.random() * 3,
                 height,
                 12
             ),
@@ -437,7 +582,8 @@ function createBuilding(x, z) {
                 color:
                     0x555b63 +
                     Math.floor(
-                        Math.random() * 0x202020
+                        Math.random() *
+                        0x202020
                     )
             })
 
@@ -450,7 +596,6 @@ function createBuilding(x, z) {
         z
     );
 
-
     building.castShadow = true;
 
     scene.add(building);
@@ -459,7 +604,7 @@ function createBuilding(x, z) {
 
 
 // ============================================================
-// 5. STREET LIGHT
+// 6. STREET LIGHT
 // ============================================================
 
 function createStreetLight(x, z) {
@@ -486,7 +631,6 @@ function createStreetLight(x, z) {
         3,
         z
     );
-
 
     scene.add(pole);
 
@@ -515,14 +659,13 @@ function createStreetLight(x, z) {
         z
     );
 
-
     scene.add(lamp);
 
 }
 
 
 // ============================================================
-// 6. RUNNER
+// 7. RUNNER
 // ============================================================
 
 function createRunner() {
@@ -530,8 +673,6 @@ function createRunner() {
     player =
         new THREE.Group();
 
-
-    // Body
 
     const body =
         new THREE.Mesh(
@@ -550,7 +691,8 @@ function createRunner() {
         );
 
 
-    body.position.y = 1.35;
+    body.position.y =
+        1.35;
 
     body.castShadow = true;
 
@@ -558,8 +700,6 @@ function createRunner() {
 
     player.add(body);
 
-
-    // Head
 
     const head =
         new THREE.Mesh(
@@ -577,7 +717,8 @@ function createRunner() {
         );
 
 
-    head.position.y = 2.25;
+    head.position.y =
+        2.25;
 
     head.castShadow = true;
 
@@ -585,8 +726,6 @@ function createRunner() {
 
     player.add(head);
 
-
-    // Hair
 
     const hair =
         new THREE.Mesh(
@@ -608,12 +747,11 @@ function createRunner() {
         );
 
 
-    hair.position.y = 2.43;
+    hair.position.y =
+        2.43;
 
     player.add(hair);
 
-
-    // Legs
 
     leftLeg =
         createLimb(
@@ -636,7 +774,6 @@ function createRunner() {
         0
     );
 
-
     rightLeg.position.set(
         0.25,
         0.45,
@@ -648,15 +785,12 @@ function createRunner() {
     player.add(rightLeg);
 
 
-    // Arms
-
     leftArm =
         createLimb(
             0.20,
             0.75,
             0xff5b22
         );
-
 
     rightArm =
         createLimb(
@@ -671,7 +805,6 @@ function createRunner() {
         1.45,
         0
     );
-
 
     rightArm.position.set(
         0.58,
@@ -697,7 +830,7 @@ function createRunner() {
 
 
 // ============================================================
-// 7. LIMB CREATOR
+// 8. LIMB
 // ============================================================
 
 function createLimb(
@@ -731,7 +864,7 @@ function createLimb(
 
 
 // ============================================================
-// 8. POLICE CHASER
+// 9. POLICE
 // ============================================================
 
 function createPolice() {
@@ -756,7 +889,8 @@ function createPolice() {
         );
 
 
-    body.position.y = 1;
+    body.position.y =
+        1;
 
     police.add(body);
 
@@ -777,7 +911,8 @@ function createPolice() {
         );
 
 
-    head.position.y = 2;
+    head.position.y =
+        2;
 
     police.add(head);
 
@@ -795,15 +930,17 @@ function createPolice() {
 
 
 // ============================================================
-// 9. START GAME
+// 10. START GAME
 // ============================================================
 
 function startGame() {
 
     gameActive = true;
+
     gameOverState = false;
 
     score = 0;
+
     sessionCoins = 0;
 
     speed = 0.42;
@@ -811,16 +948,74 @@ function startGame() {
     currentLane = 0;
 
     isJumping = false;
+
     isSliding = false;
 
     isDriving = false;
 
-    player.position.set(
-        0,
-        0,
-        0
-    );
 
+    // --------------------------------------------------------
+    // RESET SKATEBOARD
+    // --------------------------------------------------------
+
+    isSkateboardActive = false;
+
+
+    if (skateboardTimer) {
+
+        clearTimeout(
+            skateboardTimer
+        );
+
+        skateboardTimer = null;
+
+    }
+
+
+    if (skateboard) {
+
+        skateboard.visible = false;
+
+    }
+
+
+    // --------------------------------------------------------
+    // RESET CAR
+    // --------------------------------------------------------
+
+    if (car) {
+
+        car.visible = false;
+
+    }
+
+
+    // --------------------------------------------------------
+    // SHOW RUNNER
+    // --------------------------------------------------------
+
+    if (player) {
+
+        player.visible = true;
+
+        player.position.set(
+            0,
+            0,
+            0
+        );
+
+        player.scale.set(
+            1,
+            1,
+            1
+        );
+
+    }
+
+
+    // --------------------------------------------------------
+    // RESET POLICE
+    // --------------------------------------------------------
 
     if (police) {
 
@@ -855,6 +1050,8 @@ function startGame() {
             spawnTimer
         );
 
+        spawnTimer = null;
+
     }
 
 
@@ -867,7 +1064,7 @@ function startGame() {
 
 
 // ============================================================
-// 10. RESET
+// 11. RESET
 // ============================================================
 
 function resetGame() {
@@ -880,14 +1077,18 @@ function resetGame() {
 
 
 // ============================================================
-// 11. GAME OVER
+// 12. GAME OVER
 // ============================================================
 
 function gameOver() {
 
-    if (!gameActive) return;
+    if (!gameActive)
+        return;
 
-    // Skateboard saves the player from one collision.
+
+    // Skateboard protects player
+    // from the collision.
+
     if (isSkateboardActive) {
 
         deactivateSkateboard();
@@ -929,8 +1130,10 @@ function gameOver() {
     if (finalScore) {
 
         finalScore.innerText =
-            "Score: " + score +
-            " • Coins: " + sessionCoins;
+            "Score: " +
+            score +
+            " • Coins: " +
+            sessionCoins;
 
     }
 
@@ -938,15 +1141,18 @@ function gameOver() {
 
 
 // ============================================================
-// 12. PLAYER UPDATE
+// 13. PLAYER UPDATE
 // ============================================================
 
 function updatePlayer(delta) {
 
-    if (!player) return;
+    if (!player)
+        return;
 
 
-    // Jump
+    // --------------------------------------------------------
+    // JUMP
+    // --------------------------------------------------------
 
     if (isJumping) {
 
@@ -955,6 +1161,7 @@ function updatePlayer(delta) {
 
         yVelocity -=
             gravity;
+
 
         if (
             player.position.y <= 0
@@ -971,7 +1178,9 @@ function updatePlayer(delta) {
     }
 
 
-    // Lane movement
+    // --------------------------------------------------------
+    // LANE
+    // --------------------------------------------------------
 
     const targetX =
         currentLane *
@@ -979,14 +1188,20 @@ function updatePlayer(delta) {
 
 
     player.position.x +=
-        (targetX -
-            player.position.x) *
-        0.18;
+        (
+            targetX -
+            player.position.x
+        ) * 0.18;
 
 
-    // Running animation
+    // --------------------------------------------------------
+    // RUNNING ANIMATION
+    // --------------------------------------------------------
 
-    if (gameActive && !isDriving) {
+    if (
+        gameActive &&
+        !isDriving
+    ) {
 
         const t =
             performance.now() *
@@ -994,33 +1209,47 @@ function updatePlayer(delta) {
 
 
         leftLeg.rotation.x =
-            Math.sin(t) * 0.65;
+            Math.sin(t) *
+            0.65;
 
 
         rightLeg.rotation.x =
-            Math.sin(t + Math.PI) *
+            Math.sin(
+                t +
+                Math.PI
+            ) *
             0.65;
 
 
         leftArm.rotation.x =
-            Math.sin(t + Math.PI) *
+            Math.sin(
+                t +
+                Math.PI
+            ) *
             0.5;
 
 
         rightArm.rotation.x =
-            Math.sin(t) * 0.5;
+            Math.sin(t) *
+            0.5;
 
 
         player.position.y =
             isJumping ?
             player.position.y :
-            Math.abs(Math.sin(t * 0.5)) *
+            Math.abs(
+                Math.sin(
+                    t * 0.5
+                )
+            ) *
             0.035;
 
     }
 
 
-    // Driving
+    // --------------------------------------------------------
+    // DRIVING
+    // --------------------------------------------------------
 
     if (isDriving) {
 
@@ -1036,12 +1265,15 @@ function updatePlayer(delta) {
 
 
 // ============================================================
-// 13. POLICE UPDATE
+// 14. POLICE UPDATE
 // ============================================================
 
 function updatePolice() {
 
-    if (!police || !gameActive)
+    if (
+        !police ||
+        !gameActive
+    )
         return;
 
 
@@ -1050,12 +1282,11 @@ function updatePolice() {
 
 
     police.position.x +=
-        (targetX -
-            police.position.x) *
-        0.035;
+        (
+            targetX -
+            police.position.x
+        ) * 0.035;
 
-
-    // Police gets closer if player hits obstacles
 
     if (
         police.position.z <
@@ -1068,8 +1299,6 @@ function updatePolice() {
     }
 
 
-    // Keep police behind player
-
     if (
         police.position.z >
         8
@@ -1079,8 +1308,6 @@ function updatePolice() {
 
     }
 
-
-    // Police flashing lights
 
     const pulse =
         Math.sin(
@@ -1115,7 +1342,7 @@ function updatePolice() {
 
 
 // ============================================================
-// 14. OBJECT UPDATE
+// 15. OBJECT UPDATE
 // ============================================================
 
 function updateObjects() {
@@ -1129,7 +1356,8 @@ function updateObjects() {
     // --------------------------------------------------------
 
     for (
-        let i = obstacles.length - 1;
+        let i =
+            obstacles.length - 1;
         i >= 0;
         i--
     ) {
@@ -1138,10 +1366,9 @@ function updateObjects() {
             obstacles[i];
 
 
-        obj.position.z += speed;
+        obj.position.z +=
+            speed;
 
-
-        // Collision
 
         if (
             checkCollision(
@@ -1176,7 +1403,8 @@ function updateObjects() {
     // --------------------------------------------------------
 
     for (
-        let i = coins.length - 1;
+        let i =
+            coins.length - 1;
         i >= 0;
         i--
     ) {
@@ -1185,14 +1413,15 @@ function updateObjects() {
             coins[i];
 
 
-        coin.position.z += speed;
+        coin.position.z +=
+            speed;
 
-        coin.rotation.y += 0.08;
+
+        coin.rotation.y +=
+            0.08;
 
 
-        // Magnet-like collection while driving
-
-        let collectionDistance =
+        const collectionDistance =
             isDriving ?
             2.5 :
             1.25;
@@ -1250,8 +1479,7 @@ function updateObjects() {
 
 
         if (
-            vehicle.position.z >
-            15
+            vehicle.position.z > 15
         ) {
 
             scene.remove(
@@ -1268,7 +1496,9 @@ function updateObjects() {
     }
 
 
-    // Difficulty
+    // --------------------------------------------------------
+    // DIFFICULTY
+    // --------------------------------------------------------
 
     if (
         speed < maxSpeed
@@ -1280,7 +1510,9 @@ function updateObjects() {
     }
 
 
-    // Score
+    // --------------------------------------------------------
+    // SCORE
+    // --------------------------------------------------------
 
     score +=
         Math.max(
@@ -1297,7 +1529,7 @@ function updateObjects() {
 
 
 // ============================================================
-// 15. COLLISION
+// 16. COLLISION
 // ============================================================
 
 function checkCollision(
@@ -1341,7 +1573,7 @@ function checkCollision(
 
 
 // ============================================================
-// 16. REMOVE OBSTACLE
+// 17. REMOVE OBSTACLE
 // ============================================================
 
 function removeObstacle(index) {
@@ -1366,7 +1598,7 @@ function removeObstacle(index) {
 
 
 // ============================================================
-// 17. COLLECT COIN
+// 18. COLLECT COIN
 // ============================================================
 
 function collectCoin(index) {
@@ -1393,14 +1625,13 @@ function collectCoin(index) {
 
     createCoinEffect();
 
-
     updateHUD();
 
 }
 
 
 // ============================================================
-// 18. SPAWN SYSTEM
+// 19. SPAWN SYSTEM
 // ============================================================
 
 function spawnObjects() {
@@ -1410,8 +1641,11 @@ function spawnObjects() {
 
 
     const lane =
-        [-laneWidth, 0, laneWidth]
         [
+            -laneWidth,
+            0,
+            laneWidth
+        ][
             Math.floor(
                 Math.random() * 3
             )
@@ -1422,54 +1656,27 @@ function spawnObjects() {
         Math.random();
 
 
-    // --------------------------------------------------------
-    // TRAIN
-    // --------------------------------------------------------
-
     if (random < 0.18) {
 
-        createTrain(
-            lane
-        );
+        createTrain(lane);
 
     }
-
-
-    // --------------------------------------------------------
-    // BARRIER
-    // --------------------------------------------------------
 
     else if (random < 0.36) {
 
-        createBarrier(
-            lane
-        );
+        createBarrier(lane);
 
     }
-
-
-    // --------------------------------------------------------
-    // MOVING CAR
-    // --------------------------------------------------------
 
     else if (random < 0.52) {
 
-        createTrafficCar(
-            lane
-        );
+        createTrafficCar(lane);
 
     }
 
-
-    // --------------------------------------------------------
-    // COINS
-    // --------------------------------------------------------
-
     else {
 
-        createCoinLine(
-            lane
-        );
+        createCoinLine(lane);
 
     }
 
@@ -1492,7 +1699,7 @@ function spawnObjects() {
 
 
 // ============================================================
-// 19. TRAIN
+// 20. TRAIN
 // ============================================================
 
 function createTrain(lane) {
@@ -1532,7 +1739,7 @@ function createTrain(lane) {
 
 
 // ============================================================
-// 20. BARRIER
+// 21. BARRIER
 // ============================================================
 
 function createBarrier(lane) {
@@ -1570,7 +1777,7 @@ function createBarrier(lane) {
 
 
 // ============================================================
-// 21. TRAFFIC CAR
+// 22. TRAFFIC CAR
 // ============================================================
 
 function createTrafficCar(lane) {
@@ -1643,7 +1850,7 @@ function createTrafficCar(lane) {
 
 
 // ============================================================
-// 22. COIN LINE
+// 23. COINS
 // ============================================================
 
 function createCoinLine(lane) {
@@ -1695,8 +1902,8 @@ function createCoinLine(lane) {
 
 
 // ============================================================
-// 23. FOOTBALL ⚽
-// ============================================================
+// 24. FOOTBALL ⚽
+/* ============================================================ */
 
 function kickFootball() {
 
@@ -1709,6 +1916,8 @@ function kickFootball() {
         scene.remove(
             football
         );
+
+        football = null;
 
     }
 
@@ -1763,17 +1972,17 @@ function kickFootball() {
                 football.position.z -=
                     1.5;
 
+
                 football.rotation.x +=
                     0.35;
+
 
                 football.rotation.z +=
                     0.22;
 
+
                 distance += 1.5;
 
-
-                // Football can knock away
-                // a nearby obstacle.
 
                 for (
                     let i =
@@ -1841,7 +2050,7 @@ function kickFootball() {
 
 
 // ============================================================
-// 24. CAR MODE 🚗
+// 25. CAR MODE 🚗
 // ============================================================
 
 function enterCar() {
@@ -1871,6 +2080,13 @@ function enterCar() {
 
     car.visible = true;
 
+
+    // Keep car in player's lane.
+
+    car.position.x =
+        player.position.x;
+
+
     player.visible = false;
 
 
@@ -1882,7 +2098,7 @@ function enterCar() {
 
 
 // ============================================================
-// 25. PLAYER CAR
+// 26. PLAYER CAR
 // ============================================================
 
 function createPlayerCar() {
@@ -1939,8 +2155,6 @@ function createPlayerCar() {
 
     car.add(roof);
 
-
-    // Wheels
 
     for (
         let x of [-1, 1]
@@ -2000,12 +2214,44 @@ function createPlayerCar() {
 
 
 // ============================================================
-// 26. EXIT CAR
+// 27. UPDATE CAR
+// ============================================================
+
+function updateCar() {
+
+    if (
+        !car ||
+        !isDriving ||
+        !gameActive
+    )
+        return;
+
+
+    const targetX =
+        currentLane *
+        laneWidth;
+
+
+    car.position.x +=
+        (
+            targetX -
+            car.position.x
+        ) * 0.18;
+
+
+    car.position.y = 0;
+
+}
+
+
+// ============================================================
+// 28. EXIT CAR
 // ============================================================
 
 function exitCar() {
 
     isDriving = false;
+
 
     if (car) {
 
@@ -2018,13 +2264,17 @@ function exitCar() {
 
         player.visible = true;
 
+        player.position.x =
+            currentLane *
+            laneWidth;
+
     }
 
 }
 
 
 // ============================================================
-// 27. SKATEBOARD 🛹
+// 29. SKATEBOARD 🛹
 // ============================================================
 
 function activateSkateboard() {
@@ -2050,8 +2300,6 @@ function activateSkateboard() {
     skateboard.visible = true;
 
 
-    // Skateboard protection lasts 15 seconds.
-
     if (skateboardTimer) {
 
         clearTimeout(
@@ -2060,6 +2308,8 @@ function activateSkateboard() {
 
     }
 
+
+    // 15 SECOND TIMER
 
     skateboardTimer =
         setTimeout(
@@ -2075,7 +2325,7 @@ function activateSkateboard() {
 
 
 // ============================================================
-// 28. CREATE SKATEBOARD
+// 30. CREATE SKATEBOARD
 // ============================================================
 
 function createSkateboard() {
@@ -2107,8 +2357,6 @@ function createSkateboard() {
 
     skateboard.add(board);
 
-
-    // Wheels
 
     for (
         let x of [-0.48, 0.48]
@@ -2163,7 +2411,7 @@ function createSkateboard() {
 
 
 // ============================================================
-// 29. SKATEBOARD UPDATE
+// 31. UPDATE SKATEBOARD
 // ============================================================
 
 function updateSkateboard() {
@@ -2176,6 +2424,8 @@ function updateSkateboard() {
 
 
     skateboard.position.copy(
+        isDriving ?
+        car.position :
         player.position
     );
 
@@ -2191,7 +2441,7 @@ function updateSkateboard() {
 
 
 // ============================================================
-// 30. SKATEBOARD DEACTIVATE
+// 32. DEACTIVATE SKATEBOARD
 // ============================================================
 
 function deactivateSkateboard() {
@@ -2220,7 +2470,7 @@ function deactivateSkateboard() {
 
 
 // ============================================================
-// 31. MOBILE ACTION BUTTONS
+// 33. MOBILE ACTION BUTTONS
 // ============================================================
 
 function createActionButtons() {
@@ -2246,40 +2496,57 @@ function createActionButtons() {
         "mobile-actions";
 
 
+    // --------------------------------------------------------
+    // FIXED TO BOTTOM OF PHONE
+    // --------------------------------------------------------
+
     container.style.position =
         "fixed";
 
+    container.style.left =
+        "0";
+
+    container.style.right =
+        "0";
 
     container.style.bottom =
-        "18px";
+        "calc(14px + env(safe-area-inset-bottom))";
 
 
-    container.style.left =
-        "50%";
-
-
-    container.style.transform =
-        "translateX(-50%)";
+    container.style.width =
+        "100%";
 
 
     container.style.display =
         "flex";
 
 
+    container.style.justifyContent =
+        "center";
+
+
+    container.style.alignItems =
+        "center";
+
+
     container.style.gap =
-        "10px";
+        "8px";
+
+
+    container.style.padding =
+        "0 10px";
+
+
+    container.style.boxSizing =
+        "border-box";
 
 
     container.style.zIndex =
-        "9999";
+        "99999";
 
 
-    container.style.width =
-        "94%";
-
-
-    container.style.justifyContent =
-        "center";
+    container.style.pointerEvents =
+        "auto";
 
 
     const buttons = [
@@ -2318,24 +2585,40 @@ function createActionButtons() {
                 item.id;
 
 
+            button.type =
+                "button";
+
+
             button.innerText =
                 item.text;
 
 
+            // ------------------------------------------------
+            // BUTTON DESIGN
+            // ------------------------------------------------
+
+            button.style.minWidth =
+                "88px";
+
+
+            button.style.height =
+                "52px";
+
+
             button.style.padding =
-                "13px 15px";
+                "0 12px";
 
 
             button.style.border =
-                "none";
+                "2px solid rgba(255,255,255,0.18)";
 
 
             button.style.borderRadius =
-                "15px";
+                "16px";
 
 
             button.style.background =
-                "rgba(10,10,10,0.82)";
+                "rgba(10,10,10,0.90)";
 
 
             button.style.color =
@@ -2343,26 +2626,57 @@ function createActionButtons() {
 
 
             button.style.fontSize =
-                "15px";
+                "14px";
 
 
             button.style.fontWeight =
-                "bold";
+                "800";
 
 
             button.style.boxShadow =
-                "0 4px 15px rgba(0,0,0,0.35)";
+                "0 5px 20px rgba(0,0,0,0.45)";
 
 
             button.style.touchAction =
                 "manipulation";
 
 
+            button.style.userSelect =
+                "none";
+
+
+            button.style.webkitUserSelect =
+                "none";
+
+
+            button.style.cursor =
+                "pointer";
+
+
+            // ------------------------------------------------
+            // TOUCH
+            // ------------------------------------------------
+
             button.addEventListener(
                 "touchstart",
                 function(e) {
 
                     e.preventDefault();
+                    e.stopPropagation();
+
+                },
+                {
+                    passive: false
+                }
+            );
+
+
+            button.addEventListener(
+                "touchend",
+                function(e) {
+
+                    e.preventDefault();
+                    e.stopPropagation();
 
                     item.action();
 
@@ -2373,11 +2687,16 @@ function createActionButtons() {
             );
 
 
+            // ------------------------------------------------
+            // CLICK
+            // ------------------------------------------------
+
             button.addEventListener(
                 "click",
                 function(e) {
 
                     e.preventDefault();
+                    e.stopPropagation();
 
                     item.action();
 
@@ -2401,7 +2720,7 @@ function createActionButtons() {
 
 
 // ============================================================
-// 32. KEYBOARD CONTROLS
+// 34. KEYBOARD CONTROLS
 // ============================================================
 
 function handleKeyboard(e) {
@@ -2413,8 +2732,6 @@ function handleKeyboard(e) {
     const key =
         e.key.toLowerCase();
 
-
-    // LEFT
 
     if (
         key === "arrowleft" ||
@@ -2432,8 +2749,6 @@ function handleKeyboard(e) {
     }
 
 
-    // RIGHT
-
     if (
         key === "arrowright" ||
         key === "d"
@@ -2450,8 +2765,6 @@ function handleKeyboard(e) {
     }
 
 
-    // JUMP
-
     if (
         key === "arrowup" ||
         key === "w" ||
@@ -2463,8 +2776,6 @@ function handleKeyboard(e) {
     }
 
 
-    // SLIDE
-
     if (
         key === "arrowdown" ||
         key === "s"
@@ -2475,33 +2786,21 @@ function handleKeyboard(e) {
     }
 
 
-    // FOOTBALL
-
-    if (
-        key === "f"
-    ) {
+    if (key === "f") {
 
         kickFootball();
 
     }
 
 
-    // CAR
-
-    if (
-        key === "c"
-    ) {
+    if (key === "c") {
 
         enterCar();
 
     }
 
 
-    // SKATEBOARD
-
-    if (
-        key === "b"
-    ) {
+    if (key === "b") {
 
         activateSkateboard();
 
@@ -2511,7 +2810,7 @@ function handleKeyboard(e) {
 
 
 // ============================================================
-// 33. JUMP
+// 35. JUMP
 // ============================================================
 
 function jump() {
@@ -2533,7 +2832,7 @@ function jump() {
 
 
 // ============================================================
-// 34. SLIDE
+// 36. SLIDE
 // ============================================================
 
 function slide() {
@@ -2572,7 +2871,7 @@ function slide() {
 
 
 // ============================================================
-// 35. TOUCH SWIPE CONTROLS
+// 37. TOUCH CONTROLS
 // ============================================================
 
 function setupTouchControls() {
@@ -2613,6 +2912,21 @@ function setupTouchControls() {
                 return;
 
 
+            // Don't process swipes if the
+            // user touched the action buttons.
+
+            if (
+                e.target &&
+                e.target.closest(
+                    "#mobile-actions"
+                )
+            ) {
+
+                return;
+
+            }
+
+
             const endX =
                 e.changedTouches[0].clientX;
 
@@ -2630,8 +2944,6 @@ function setupTouchControls() {
                 endY -
                 touchStartY;
 
-
-            // Ignore small taps.
 
             if (
                 Math.abs(deltaX) < 35 &&
@@ -2668,6 +2980,7 @@ function setupTouchControls() {
                 }
 
             }
+
             else {
 
                 if (
@@ -2696,11 +3009,28 @@ function setupTouchControls() {
     );
 
 
-    // Double tap = skateboard
+    // --------------------------------------------------------
+    // DOUBLE TAP = SKATEBOARD
+    // --------------------------------------------------------
 
     window.addEventListener(
         "touchend",
-        function() {
+        function(e) {
+
+            if (
+                !gameActive ||
+                (
+                    e.target &&
+                    e.target.closest(
+                        "#mobile-actions"
+                    )
+                )
+            ) {
+
+                return;
+
+            }
+
 
             const now =
                 Date.now();
@@ -2713,6 +3043,10 @@ function setupTouchControls() {
             ) {
 
                 activateSkateboard();
+
+                lastTapTime = 0;
+
+                return;
 
             }
 
@@ -2727,7 +3061,7 @@ function setupTouchControls() {
 
 
 // ============================================================
-// 36. DOUBLE CLICK = SKATEBOARD
+// 38. DOUBLE CLICK = SKATEBOARD
 // ============================================================
 
 window.addEventListener(
@@ -2745,7 +3079,7 @@ window.addEventListener(
 
 
 // ============================================================
-// 37. HUD
+// 39. HUD
 // ============================================================
 
 function updateHUD() {
@@ -2807,7 +3141,7 @@ function updateHUD() {
 
 
 // ============================================================
-// 38. COIN EFFECT
+// 40. COIN EFFECT
 // ============================================================
 
 function createCoinEffect() {
@@ -2833,6 +3167,8 @@ function createCoinEffect() {
 
 
     ring.position.copy(
+        isDriving ?
+        car.position :
         player.position
     );
 
@@ -2843,6 +3179,7 @@ function createCoinEffect() {
 
     scene.add(ring);
 
+
     effects.push({
         mesh: ring,
         life: 1
@@ -2852,7 +3189,7 @@ function createCoinEffect() {
 
 
 // ============================================================
-// 39. IMPACT EFFECT
+// 41. IMPACT EFFECT
 // ============================================================
 
 function createImpactEffect() {
@@ -2878,6 +3215,8 @@ function createImpactEffect() {
 
 
     ring.position.copy(
+        isDriving ?
+        car.position :
         player.position
     );
 
@@ -2898,7 +3237,7 @@ function createImpactEffect() {
 
 
 // ============================================================
-// 40. EFFECT UPDATE
+// 42. EFFECT UPDATE
 // ============================================================
 
 function updateEffects() {
@@ -2949,7 +3288,7 @@ function updateEffects() {
 
 
 // ============================================================
-// 41. CLEAR OBJECTS
+// 43. CLEAR OBJECTS
 // ============================================================
 
 function clearObjects() {
@@ -2973,7 +3312,9 @@ function clearObjects() {
 
 
     obstacles = [];
+
     coins = [];
+
     movingVehicles = [];
 
 
@@ -2991,7 +3332,7 @@ function clearObjects() {
 
 
 // ============================================================
-// 42. HIDE ELEMENT
+// 44. HIDE ELEMENT
 // ============================================================
 
 function hideElement(id) {
@@ -3016,7 +3357,7 @@ function hideElement(id) {
 
 
 // ============================================================
-// 43. SHOW ELEMENT
+// 45. SHOW ELEMENT
 // ============================================================
 
 function showElement(id) {
@@ -3041,7 +3382,7 @@ function showElement(id) {
 
 
 // ============================================================
-// 44. RESIZE
+// 46. RESIZE
 // ============================================================
 
 function onWindowResize() {
@@ -3070,7 +3411,7 @@ function onWindowResize() {
 
 
 // ============================================================
-// 45. ANIMATION LOOP
+// 47. ANIMATION LOOP
 // ============================================================
 
 function animate() {
@@ -3087,9 +3428,10 @@ function animate() {
     const delta =
         Math.min(
             0.05,
-            (now -
-                lastFrameTime) /
-            1000
+            (
+                now -
+                lastFrameTime
+            ) / 1000
         );
 
 
@@ -3099,13 +3441,13 @@ function animate() {
 
     if (gameActive) {
 
-        updatePlayer(
-            delta
-        );
+        updatePlayer(delta);
 
         updateObjects();
 
         updatePolice();
+
+        updateCar();
 
         updateSkateboard();
 
@@ -3131,7 +3473,7 @@ function animate() {
 
 
 // ============================================================
-// 46. START EVERYTHING AFTER HTML LOADS
+// 48. START AFTER HTML LOAD
 // ============================================================
 
 window.addEventListener(
