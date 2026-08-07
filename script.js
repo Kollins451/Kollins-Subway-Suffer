@@ -487,3 +487,411 @@ window.addEventListener("DOMContentLoaded",()=>{
 
 
 });
+// ============================================
+// GAME ANIMATION LOOP
+// ============================================
+
+function animate(){
+
+    requestAnimationFrame(animate);
+
+
+    if(gameActive){
+
+        updatePlayer();
+        updateObjects();
+
+    }
+
+
+    if(renderer && scene && camera){
+
+        renderer.render(
+            scene,
+            camera
+        );
+
+    }
+
+}
+
+
+
+// ============================================
+// PLAYER MOVEMENT
+// ============================================
+
+function updatePlayer(){
+
+
+    // Jump physics
+
+    if(isJumping){
+
+        player.position.y += yVelocity;
+
+        yVelocity -= gravity;
+
+
+        if(player.position.y <= 0.05){
+
+            player.position.y = 0.05;
+
+            isJumping = false;
+
+            yVelocity = 0;
+
+        }
+
+    }
+
+
+    // Move player between lanes
+
+    let targetX = currentLane * laneWidth;
+
+
+    player.position.x +=
+    (targetX - player.position.x) * 0.15;
+
+
+
+}
+
+
+
+// ============================================
+// OBJECT MOVEMENT
+// ============================================
+
+function updateObjects(){
+
+
+    obstacles.forEach((object,index)=>{
+
+
+        object.position.z += speed;
+
+
+
+        if(object.position.z > 10){
+
+            scene.remove(object);
+
+            obstacles.splice(index,1);
+
+        }
+
+
+    });
+
+
+
+    coins.forEach((coin,index)=>{
+
+
+        coin.position.z += speed;
+
+
+
+        if(coin.position.z > 10){
+
+            scene.remove(coin);
+
+            coins.splice(index,1);
+
+        }
+
+
+    });
+
+
+
+    // Increase difficulty slowly
+
+    if(speed < maxSpeed){
+
+        speed += 0.00005;
+
+    }
+
+
+}
+
+
+
+// ============================================
+// KEYBOARD CONTROLS
+// ============================================
+
+function handleKeyboardControls(e){
+
+
+    if(!gameActive) return;
+
+
+    let key =
+    e.key.toLowerCase();
+
+
+
+    if(
+        key === "arrowleft" ||
+        key === "a"
+    ){
+
+        if(currentLane > -1){
+
+            currentLane--;
+
+        }
+
+    }
+
+
+
+    if(
+        key === "arrowright" ||
+        key === "d"
+    ){
+
+        if(currentLane < 1){
+
+            currentLane++;
+
+        }
+
+    }
+
+
+
+    if(
+        key === "arrowup" ||
+        key === "w" ||
+        key === " "
+    ){
+
+        if(!isJumping){
+
+            isJumping = true;
+
+            yVelocity = jumpForce;
+
+        }
+
+    }
+
+
+}
+// ============================================
+// SPAWN OBJECTS
+// ============================================
+
+function spawnProceduralItemsLoop(){
+
+    if(!gameActive) return;
+
+
+    let lanes = [
+        -laneWidth,
+        0,
+        laneWidth
+    ];
+
+
+    let lane =
+    lanes[Math.floor(Math.random()*lanes.length)];
+
+
+
+    let type =
+    Math.random();
+
+
+
+    if(type < 0.5){
+
+
+        let obstacle =
+        new THREE.Mesh(
+
+            new THREE.BoxGeometry(
+                2,
+                2,
+                2
+            ),
+
+            new THREE.MeshStandardMaterial({
+                color:0xff0000
+            })
+
+        );
+
+
+        obstacle.position.set(
+            lane,
+            1,
+            -100
+        );
+
+
+        scene.add(obstacle);
+
+        obstacles.push(obstacle);
+
+
+    }else{
+
+
+        let coin =
+        new THREE.Mesh(
+
+            new THREE.CylinderGeometry(
+                0.4,
+                0.4,
+                0.15,
+                20
+            ),
+
+            new THREE.MeshStandardMaterial({
+                color:0xffff00
+            })
+
+        );
+
+
+        coin.rotation.x =
+        Math.PI/2;
+
+
+        coin.position.set(
+            lane,
+            1,
+            -100
+        );
+
+
+        scene.add(coin);
+
+        coins.push(coin);
+
+
+    }
+
+
+
+    setTimeout(
+        spawnProceduralItemsLoop,
+        1200
+    );
+
+}
+
+
+
+// ============================================
+// WINDOW RESIZE FIX
+// ============================================
+
+function onWindowResize(){
+
+    if(!camera || !renderer) return;
+
+
+    camera.aspect =
+    window.innerWidth /
+    window.innerHeight;
+
+
+    camera.updateProjectionMatrix();
+
+
+    renderer.setSize(
+        window.innerWidth,
+        window.innerHeight
+    );
+
+}
+
+
+
+// ============================================
+// START GAME TOUCH SUPPORT
+// ============================================
+
+function setupTouchSwipeControls(){
+
+    let startX = 0;
+
+
+    window.addEventListener(
+        "touchstart",
+        e=>{
+
+            startX =
+            e.touches[0].clientX;
+
+        }
+    );
+
+
+
+    window.addEventListener(
+        "touchend",
+        e=>{
+
+
+            if(!gameActive) return;
+
+
+            let endX =
+            e.changedTouches[0].clientX;
+
+
+            let difference =
+            endX - startX;
+
+
+
+            if(difference > 50){
+
+                if(currentLane < 1)
+                currentLane++;
+
+            }
+
+
+            if(difference < -50){
+
+                if(currentLane > -1)
+                currentLane--;
+
+            }
+
+
+        }
+    );
+
+}
+
+
+
+// ============================================
+// AUTO START SPAWNER AFTER INIT
+// ============================================
+
+let oldStartGame = startGame;
+
+
+startGame = function(){
+
+    oldStartGame();
+
+
+    if(!spawnTimeoutRef){
+
+        spawnProceduralItemsLoop();
+
+    }
+
+};
