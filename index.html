@@ -176,7 +176,8 @@
     <div id="menu-screen" class="modal main-menu">
         <h1>SUBWAY SURFERS</h1>
         <p>Web Template Edition</p>
-        <button onclick="startGame()">TAP TO PLAY</button>
+        <!-- CHROMEBOOK FIX: Replaced inline handler with direct event hook setup -->
+        <button id="play-btn">TAP TO PLAY</button>
         <div style="margin-top:20px; font-size:14px; color:#aaa;">TOTAL BANKED COINS: <span id="banked-coins">0</span></div>
     </div>
 
@@ -184,7 +185,7 @@
     <div id="gameover-screen" class="modal game-over hidden">
         <h1>CAUGHT!</h1>
         <p>The Inspector and his dog cornered you.</p>
-        <button onclick="resetGame()">RUN AGAIN</button>
+        <button id="retry-btn">RUN AGAIN</button>
     </div>
 
     <div id="controls-hint">Desktop: A/D or Arrows to Move | W/Space to Jump | S to Slide | Double Click / E to deploy Hoverboard</div>
@@ -234,7 +235,6 @@
 
             renderer = new THREE.WebGLRenderer({ antialias: true });
             renderer.setSize(window.innerWidth, window.innerHeight);
-            // FIXED: Standardized WebGL shadow initialization parameters 
             renderer.shadowMap.enabled = true;
             document.body.appendChild(renderer.domElement);
 
@@ -253,7 +253,16 @@
             window.addEventListener('resize', onWindowResize);
             window.addEventListener('dblclick', () => { if(gameActive) activateHoverboard(); });
 
-            document.getElementById('banked-coins').innerText = localStorage.getItem('subway_total_coins') || 0;
+            // CHROMEBOOK EVENT HOOK LINKING FIX
+            document.getElementById('play-btn').addEventListener('click', startGame);
+            document.getElementById('retry-btn').addEventListener('click', resetGame);
+
+            // CHROMEBOOK PROTECTION: LocalStorage safety wrapper layer
+            try {
+                document.getElementById('banked-coins').innerText = localStorage.getItem('subway_total_coins') || 0;
+            } catch(e) {
+                document.getElementById('banked-coins').innerText = "0 (Storage Blocked)";
+            }
         }
 
         function buildSubwayGridEnvironment() {
@@ -279,15 +288,3 @@
 
         function spawnSideSceneryPillars(zPos) {
             const wallGeo = new THREE.BoxGeometry(1.5, 8, 10);
-            const wallMat = new THREE.MeshStandardMaterial({ color: 0x7a6350 });
-            
-            const leftWall = new THREE.Mesh(wallGeo, wallMat);
-            leftWall.position.set(-11, 4, zPos);
-            scene.add(leftWall);
-            sceneryItems.push(leftWall);
-
-            const rightWall = leftWall.clone();
-            rightWall.position.x = 11;
-            scene.add(rightWall);
-            sceneryItems.push(rightWall);
-        }
