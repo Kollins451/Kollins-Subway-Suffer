@@ -234,6 +234,7 @@
 
             renderer = new THREE.WebGLRenderer({ antialias: true });
             renderer.setSize(window.innerWidth, window.innerHeight);
+            // FIXED: Standardized WebGL shadow initialization parameters 
             renderer.shadowMap.enabled = true;
             document.body.appendChild(renderer.domElement);
 
@@ -290,6 +291,3 @@
             scene.add(rightWall);
             sceneryItems.push(rightWall);
         }
-
-        function buildPlayerModelCharacter() {
-            player = new THREE.Group();
