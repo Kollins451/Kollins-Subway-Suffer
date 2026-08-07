@@ -1,0 +1,175 @@
+/* ==========================================================================
+   SUBWAY SURFERS CORE LAYOUT & INTERFACE RESET
+   ========================================================================== */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    user-select: none;
+    -webkit-user-select: none;
+}
+
+body, html {
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    background-color: #5c940d;
+    font-family: 'Arial Black', Gadget, sans-serif;
+}
+
+/* Three.js Render Target Window Canvas Frame Context */
+canvas {
+    display: block;
+    width: 100vw;
+    height: 100vh;
+    position: absolute;
+    top: 0;
+    left: 0;
+    z-index: 1;
+}
+
+/* ==========================================================================
+   HEADS UP DISPLAY NAVIGATION (HUD OVERLAYS)
+   ========================================================================== */
+#hud {
+    position: absolute;
+    top: 20px;
+    left: 20px;
+    right: 20px;
+    z-index: 10;
+    display: flex;
+    justify-content: space-between;
+    pointer-events: none;
+}
+
+.hud-box {
+    background: rgba(0, 0, 0, 0.65);
+    padding: 10px 20px;
+    border-radius: 8px;
+    border: 2px solid #ffffff;
+    font-size: 20px;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+#score-box { 
+    color: #00ffcc; 
+}
+
+#coin-box { 
+    color: #ffd700; 
+}
+
+/* ==========================================================================
+   POWER-UP TIMER METRIC PROGRESS BARS
+   ========================================================================== */
+#active-powerups {
+    position: absolute;
+    top: 90px;
+    left: 20px;
+    z-index: 10;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    width: 200px;
+    pointer-events: none;
+}
+
+.powerup-bar {
+    background: rgba(0, 0, 0, 0.7);
+    border: 1px solid #ffffff;
+    border-radius: 4px;
+    padding: 5px;
+    font-size: 11px;
+    color: #ffffff;
+}
+
+.progress-fill {
+    height: 8px;
+    background: #00ffcc;
+    width: 100%;
+    margin-top: 4px;
+    border-radius: 2px;
+    transition: width 0.1s linear;
+}
+
+/* ==========================================================================
+   STATE SCREEN INTERACTIVE OVERLAY MODALS
+   ========================================================================== */
+.modal {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 20;
+    background: rgba(0, 0, 0, 0.75);
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    color: #ffffff;
+    text-align: center;
+    padding: 20px;
+}
+
+h1 {
+    font-size: 44px;
+    margin-bottom: 15px;
+    letter-spacing: 2px;
+    text-shadow: 0 4px 0 #000000;
+}
+
+.main-menu h1 { 
+    color: #ffcc00; 
+}
+
+.game-over h1 { 
+    color: #ff3333; 
+}
+
+p {
+    font-size: 18px;
+    margin-bottom: 30px;
+    color: #dddddd;
+}
+
+/* Highly Interactive Responsive CTA Action Button */
+button {
+    background: #ffcc00;
+    color: #000000;
+    border: none;
+    padding: 15px 40px;
+    font-size: 22px;
+    font-weight: bold;
+    font-family: 'Arial Black', sans-serif;
+    border-radius: 50px;
+    cursor: pointer;
+    box-shadow: 0 5px 0 #b38f00;
+    transition: transform 0.1s;
+}
+
+button:active {
+    transform: scale(0.95) translateY(5px);
+    box-shadow: none;
+}
+
+/* Utility Class For Engine State Switching */
+.hidden { 
+    display: none !important; 
+}
+
+/* Mobile Instructions Overlay Footer Hint Text */
+#controls-hint {
+    position: absolute;
+    bottom: 15px;
+    width: 100%;
+    text-align: center;
+    color: rgba(255, 255, 255, 0.6);
+    font-size: 12px;
+    z-index: 5;
+    pointer-events: none;
+    font-family: sans-serif;
+}
