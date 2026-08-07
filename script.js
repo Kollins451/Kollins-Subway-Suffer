@@ -1,18 +1,22 @@
+}
+```javascript
 // ============================================================
 // KOLLINS RUNNER - COMPLETE GAME ENGINE
 // ============================================================
-// Features:
+// FEATURES
 // 🏃 Running character
 // 🚓 Police chase
+// 🚧 Obstacles
+// 🪙 Coins
 // 🚗 Car mode
 // ⚽ Football kick
-// 🛹 Double-tap skateboard (15 seconds)
-// 🪙 Coins
-// 🚧 Obstacles
-// 👆 Mobile swipe controls
-// 📱 Bottom mobile action buttons
-// 🎮 Keyboard controls
+// 🛹 Double-tap skateboard
+// 🛹 15-second skateboard protection
 // ▶️ Tap to Play
+// 🔄 Play Again
+// 👆 Mobile swipe controls
+// 📱 Mobile action buttons
+// 🎮 Keyboard controls
 // ============================================================
 
 
@@ -34,14 +38,15 @@ let rightLeg;
 let leftArm;
 let rightArm;
 
-let car;
-let football;
-let skateboard;
+let car = null;
+let football = null;
+let skateboard = null;
 
 let gameActive = false;
 let gameOverState = false;
 
 let currentLane = 0;
+
 const laneWidth = 3.3;
 
 let score = 0;
@@ -59,13 +64,16 @@ let isJumping = false;
 let isSliding = false;
 
 let yVelocity = 0;
+
 const gravity = 0.020;
 const jumpForce = 0.42;
 
 let isDriving = false;
+
 let isSkateboardActive = false;
 
 let skateboardTimer = null;
+
 let lastTapTime = 0;
 
 let spawnTimer = null;
@@ -84,7 +92,13 @@ let lastFrameTime = performance.now();
 
 function init() {
 
+    // Prevent duplicate initialization
     if (renderer) return;
+
+
+    // --------------------------------------------------------
+    // SCENE
+    // --------------------------------------------------------
 
     scene = new THREE.Scene();
 
@@ -210,7 +224,19 @@ function init() {
 
     createPolice();
 
+
+    // --------------------------------------------------------
+    // MOBILE BUTTONS
+    // --------------------------------------------------------
+
     createActionButtons();
+
+
+    // --------------------------------------------------------
+    // TAP TO PLAY
+    // --------------------------------------------------------
+
+    createTapToPlay();
 
 
     // --------------------------------------------------------
@@ -222,33 +248,18 @@ function init() {
         handleKeyboard
     );
 
+
     window.addEventListener(
         "resize",
         onWindowResize
     );
 
+
     setupTouchControls();
 
 
     // --------------------------------------------------------
-    // PLAY / RETRY BUTTONS
-    // --------------------------------------------------------
-
-    setupPlayButtons();
-
-
-    animate();
-}
-
-
-// ============================================================
-// 3. PLAY BUTTON SYSTEM
-// ============================================================
-
-function setupPlayButtons() {
-
-    // --------------------------------------------------------
-    // NORMAL PLAY BUTTON
+    // EXISTING HTML PLAY BUTTON
     // --------------------------------------------------------
 
     const playButton =
@@ -259,21 +270,9 @@ function setupPlayButtons() {
     if (playButton) {
 
         playButton.onclick =
-            function(e) {
+            function(event) {
 
-                e.preventDefault();
-                e.stopPropagation();
-
-                startGame();
-
-            };
-
-
-        playButton.ontouchend =
-            function(e) {
-
-                e.preventDefault();
-                e.stopPropagation();
+                event.preventDefault();
 
                 startGame();
 
@@ -283,7 +282,7 @@ function setupPlayButtons() {
 
 
     // --------------------------------------------------------
-    // RETRY BUTTON
+    // EXISTING HTML RETRY BUTTON
     // --------------------------------------------------------
 
     const retryButton =
@@ -294,21 +293,9 @@ function setupPlayButtons() {
     if (retryButton) {
 
         retryButton.onclick =
-            function(e) {
+            function(event) {
 
-                e.preventDefault();
-                e.stopPropagation();
-
-                resetGame();
-
-            };
-
-
-        retryButton.ontouchend =
-            function(e) {
-
-                e.preventDefault();
-                e.stopPropagation();
+                event.preventDefault();
 
                 resetGame();
 
@@ -317,92 +304,19 @@ function setupPlayButtons() {
     }
 
 
-    // --------------------------------------------------------
-    // TAP MENU TO PLAY
-    // --------------------------------------------------------
+    // Game starts paused
+    gameActive = false;
 
-    const menuScreen =
-        document.getElementById(
-            "menu-screen"
-        );
-
-    if (menuScreen) {
-
-        let tapLocked = false;
+    gameOverState = false;
 
 
-        function playFromMenu(e) {
-
-            if (
-                e.target &&
-                (
-                    e.target.id ===
-                    "play-btn" ||
-
-                    e.target.closest(
-                        "#play-btn"
-                    )
-                )
-            ) {
-
-                return;
-
-            }
-
-
-            if (
-                gameActive ||
-                tapLocked
-            ) {
-
-                return;
-
-            }
-
-
-            tapLocked = true;
-
-
-            e.preventDefault();
-            e.stopPropagation();
-
-
-            startGame();
-
-
-            setTimeout(
-                function() {
-
-                    tapLocked = false;
-
-                },
-                500
-            );
-
-        }
-
-
-        menuScreen.addEventListener(
-            "touchend",
-            playFromMenu,
-            {
-                passive: false
-            }
-        );
-
-
-        menuScreen.addEventListener(
-            "click",
-            playFromMenu
-        );
-
-    }
+    animate();
 
 }
 
 
 // ============================================================
-// 4. WORLD
+// 3. WORLD
 // ============================================================
 
 function createWorld() {
@@ -467,13 +381,14 @@ function createWorld() {
             -1500
         );
 
+
         scene.add(rail);
 
     }
 
 
     // --------------------------------------------------------
-    // SLEEPER BLOCKS
+    // SLEEPERS
     // --------------------------------------------------------
 
     for (
@@ -504,6 +419,7 @@ function createWorld() {
             z
         );
 
+
         scene.add(sleeper);
 
     }
@@ -533,7 +449,7 @@ function createWorld() {
 
 
     // --------------------------------------------------------
-    // LIGHTS
+    // LIGHT POLES
     // --------------------------------------------------------
 
     for (
@@ -558,7 +474,7 @@ function createWorld() {
 
 
 // ============================================================
-// 5. BUILDINGS
+// 4. BUILDING
 // ============================================================
 
 function createBuilding(x, z) {
@@ -596,6 +512,7 @@ function createBuilding(x, z) {
         z
     );
 
+
     building.castShadow = true;
 
     scene.add(building);
@@ -604,7 +521,7 @@ function createBuilding(x, z) {
 
 
 // ============================================================
-// 6. STREET LIGHT
+// 5. STREET LIGHT
 // ============================================================
 
 function createStreetLight(x, z) {
@@ -631,6 +548,7 @@ function createStreetLight(x, z) {
         3,
         z
     );
+
 
     scene.add(pole);
 
@@ -659,13 +577,14 @@ function createStreetLight(x, z) {
         z
     );
 
+
     scene.add(lamp);
 
 }
 
 
 // ============================================================
-// 7. RUNNER
+// 6. RUNNER
 // ============================================================
 
 function createRunner() {
@@ -673,6 +592,8 @@ function createRunner() {
     player =
         new THREE.Group();
 
+
+    // BODY
 
     const body =
         new THREE.Mesh(
@@ -701,6 +622,8 @@ function createRunner() {
     player.add(body);
 
 
+    // HEAD
+
     const head =
         new THREE.Mesh(
 
@@ -726,6 +649,8 @@ function createRunner() {
 
     player.add(head);
 
+
+    // HAIR
 
     const hair =
         new THREE.Mesh(
@@ -753,12 +678,15 @@ function createRunner() {
     player.add(hair);
 
 
+    // LEGS
+
     leftLeg =
         createLimb(
             0.24,
             0.9,
             0x222222
         );
+
 
     rightLeg =
         createLimb(
@@ -774,6 +702,7 @@ function createRunner() {
         0
     );
 
+
     rightLeg.position.set(
         0.25,
         0.45,
@@ -782,8 +711,11 @@ function createRunner() {
 
 
     player.add(leftLeg);
+
     player.add(rightLeg);
 
+
+    // ARMS
 
     leftArm =
         createLimb(
@@ -791,6 +723,7 @@ function createRunner() {
             0.75,
             0xff5b22
         );
+
 
     rightArm =
         createLimb(
@@ -806,6 +739,7 @@ function createRunner() {
         0
     );
 
+
     rightArm.position.set(
         0.58,
         1.45,
@@ -814,6 +748,7 @@ function createRunner() {
 
 
     player.add(leftArm);
+
     player.add(rightArm);
 
 
@@ -830,7 +765,7 @@ function createRunner() {
 
 
 // ============================================================
-// 8. LIMB
+// 7. LIMB
 // ============================================================
 
 function createLimb(
@@ -864,7 +799,7 @@ function createLimb(
 
 
 // ============================================================
-// 9. POLICE
+// 8. POLICE
 // ============================================================
 
 function createPolice() {
@@ -889,8 +824,7 @@ function createPolice() {
         );
 
 
-    body.position.y =
-        1;
+    body.position.y = 1;
 
     police.add(body);
 
@@ -911,8 +845,7 @@ function createPolice() {
         );
 
 
-    head.position.y =
-        2;
+    head.position.y = 2;
 
     police.add(head);
 
@@ -930,7 +863,7 @@ function createPolice() {
 
 
 // ============================================================
-// 10. START GAME
+// 9. START GAME
 // ============================================================
 
 function startGame() {
@@ -939,13 +872,16 @@ function startGame() {
 
     gameOverState = false;
 
+
     score = 0;
 
     sessionCoins = 0;
 
+
     speed = 0.42;
 
     currentLane = 0;
+
 
     isJumping = false;
 
@@ -954,34 +890,15 @@ function startGame() {
     isDriving = false;
 
 
-    // --------------------------------------------------------
-    // RESET SKATEBOARD
-    // --------------------------------------------------------
-
-    isSkateboardActive = false;
-
-
-    if (skateboardTimer) {
-
-        clearTimeout(
-            skateboardTimer
-        );
-
-        skateboardTimer = null;
-
-    }
+    player.position.set(
+        0,
+        0,
+        0
+    );
 
 
-    if (skateboard) {
+    player.visible = true;
 
-        skateboard.visible = false;
-
-    }
-
-
-    // --------------------------------------------------------
-    // RESET CAR
-    // --------------------------------------------------------
 
     if (car) {
 
@@ -990,32 +907,8 @@ function startGame() {
     }
 
 
-    // --------------------------------------------------------
-    // SHOW RUNNER
-    // --------------------------------------------------------
+    deactivateSkateboard();
 
-    if (player) {
-
-        player.visible = true;
-
-        player.position.set(
-            0,
-            0,
-            0
-        );
-
-        player.scale.set(
-            1,
-            1,
-            1
-        );
-
-    }
-
-
-    // --------------------------------------------------------
-    // RESET POLICE
-    // --------------------------------------------------------
 
     if (police) {
 
@@ -1041,6 +934,9 @@ function startGame() {
     );
 
 
+    hideTapToPlay();
+
+
     clearObjects();
 
 
@@ -1064,7 +960,7 @@ function startGame() {
 
 
 // ============================================================
-// 11. RESET
+// 10. RESET GAME
 // ============================================================
 
 function resetGame() {
@@ -1077,7 +973,208 @@ function resetGame() {
 
 
 // ============================================================
-// 12. GAME OVER
+// 11. TAP TO PLAY
+// ============================================================
+
+function createTapToPlay() {
+
+    if (
+        document.getElementById(
+            "kollins-tap-play"
+        )
+    ) {
+
+        return;
+
+    }
+
+
+    const overlay =
+        document.createElement(
+            "div"
+        );
+
+
+    overlay.id =
+        "kollins-tap-play";
+
+
+    overlay.style.position =
+        "fixed";
+
+    overlay.style.top =
+        "0";
+
+    overlay.style.left =
+        "0";
+
+    overlay.style.right =
+        "0";
+
+    overlay.style.bottom =
+        "0";
+
+    overlay.style.zIndex =
+        "10000";
+
+    overlay.style.display =
+        "flex";
+
+    overlay.style.alignItems =
+        "center";
+
+    overlay.style.justifyContent =
+        "center";
+
+    overlay.style.background =
+        "rgba(0,0,0,0.40)";
+
+    overlay.style.touchAction =
+        "manipulation";
+
+
+    const button =
+        document.createElement(
+            "button"
+        );
+
+
+    button.id =
+        "kollins-tap-play-button";
+
+
+    button.innerHTML =
+        "▶️ TAP TO PLAY";
+
+
+    button.style.padding =
+        "20px 38px";
+
+    button.style.border =
+        "none";
+
+    button.style.borderRadius =
+        "22px";
+
+    button.style.background =
+        "#ff5b22";
+
+    button.style.color =
+        "#ffffff";
+
+    button.style.fontSize =
+        "22px";
+
+    button.style.fontWeight =
+        "900";
+
+    button.style.boxShadow =
+        "0 8px 30px rgba(0,0,0,0.45)";
+
+    button.style.touchAction =
+        "manipulation";
+
+    button.style.webkitTapHighlightColor =
+        "transparent";
+
+
+    // TOUCH
+    button.addEventListener(
+        "touchend",
+        function(e) {
+
+            e.preventDefault();
+
+            e.stopPropagation();
+
+            startGame();
+
+        },
+        {
+            passive: false
+        }
+    );
+
+
+    // CLICK
+    button.addEventListener(
+        "click",
+        function(e) {
+
+            e.preventDefault();
+
+            e.stopPropagation();
+
+            startGame();
+
+        }
+    );
+
+
+    overlay.appendChild(
+        button
+    );
+
+
+    document.body.appendChild(
+        overlay
+    );
+
+}
+
+
+// ============================================================
+// 12. HIDE TAP TO PLAY
+// ============================================================
+
+function hideTapToPlay() {
+
+    const overlay =
+        document.getElementById(
+            "kollins-tap-play"
+        );
+
+
+    if (overlay) {
+
+        overlay.style.display =
+            "none";
+
+        overlay.style.pointerEvents =
+            "none";
+
+    }
+
+}
+
+
+// ============================================================
+// 13. SHOW TAP TO PLAY
+// ============================================================
+
+function showTapToPlay() {
+
+    const overlay =
+        document.getElementById(
+            "kollins-tap-play"
+        );
+
+
+    if (overlay) {
+
+        overlay.style.display =
+            "flex";
+
+        overlay.style.pointerEvents =
+            "auto";
+
+    }
+
+}
+
+
+// ============================================================
+// 14. GAME OVER
 // ============================================================
 
 function gameOver() {
@@ -1087,8 +1184,6 @@ function gameOver() {
 
 
     // Skateboard protects player
-    // from the collision.
-
     if (isSkateboardActive) {
 
         deactivateSkateboard();
@@ -1141,7 +1236,7 @@ function gameOver() {
 
 
 // ============================================================
-// 13. PLAYER UPDATE
+// 15. PLAYER UPDATE
 // ============================================================
 
 function updatePlayer(delta) {
@@ -1150,9 +1245,7 @@ function updatePlayer(delta) {
         return;
 
 
-    // --------------------------------------------------------
     // JUMP
-    // --------------------------------------------------------
 
     if (isJumping) {
 
@@ -1178,9 +1271,7 @@ function updatePlayer(delta) {
     }
 
 
-    // --------------------------------------------------------
-    // LANE
-    // --------------------------------------------------------
+    // LANE MOVEMENT
 
     const targetX =
         currentLane *
@@ -1191,12 +1282,11 @@ function updatePlayer(delta) {
         (
             targetX -
             player.position.x
-        ) * 0.18;
+        ) *
+        0.18;
 
 
-    // --------------------------------------------------------
     // RUNNING ANIMATION
-    // --------------------------------------------------------
 
     if (
         gameActive &&
@@ -1234,22 +1324,22 @@ function updatePlayer(delta) {
             0.5;
 
 
-        player.position.y =
-            isJumping ?
-            player.position.y :
-            Math.abs(
-                Math.sin(
-                    t * 0.5
-                )
-            ) *
-            0.035;
+        if (!isJumping) {
+
+            player.position.y =
+                Math.abs(
+                    Math.sin(
+                        t * 0.5
+                    )
+                ) *
+                0.035;
+
+        }
 
     }
 
 
-    // --------------------------------------------------------
     // DRIVING
-    // --------------------------------------------------------
 
     if (isDriving) {
 
@@ -1265,7 +1355,7 @@ function updatePlayer(delta) {
 
 
 // ============================================================
-// 14. POLICE UPDATE
+// 16. POLICE UPDATE
 // ============================================================
 
 function updatePolice() {
@@ -1285,7 +1375,8 @@ function updatePolice() {
         (
             targetX -
             police.position.x
-        ) * 0.035;
+        ) *
+        0.035;
 
 
     if (
@@ -1325,10 +1416,12 @@ function updatePolice() {
             ) {
 
                 child.material.emissive =
-                    pulse > 0 ?
+                    pulse > 0
+                    ?
                     new THREE.Color(
                         0x330000
-                    ) :
+                    )
+                    :
                     new THREE.Color(
                         0x000033
                     );
@@ -1342,7 +1435,7 @@ function updatePolice() {
 
 
 // ============================================================
-// 15. OBJECT UPDATE
+// 17. OBJECT UPDATE
 // ============================================================
 
 function updateObjects() {
@@ -1422,8 +1515,10 @@ function updateObjects() {
 
 
         const collectionDistance =
-            isDriving ?
-            2.5 :
+            isDriving
+            ?
+            2.5
+            :
             1.25;
 
 
@@ -1460,7 +1555,7 @@ function updateObjects() {
 
 
     // --------------------------------------------------------
-    // VEHICLES
+    // MOVING VEHICLES
     // --------------------------------------------------------
 
     for (
@@ -1497,7 +1592,7 @@ function updateObjects() {
 
 
     // --------------------------------------------------------
-    // DIFFICULTY
+    // SPEED
     // --------------------------------------------------------
 
     if (
@@ -1529,7 +1624,7 @@ function updateObjects() {
 
 
 // ============================================================
-// 16. COLLISION
+// 18. COLLISION
 // ============================================================
 
 function checkCollision(
@@ -1573,7 +1668,7 @@ function checkCollision(
 
 
 // ============================================================
-// 17. REMOVE OBSTACLE
+// 19. REMOVE OBSTACLE
 // ============================================================
 
 function removeObstacle(index) {
@@ -1598,7 +1693,7 @@ function removeObstacle(index) {
 
 
 // ============================================================
-// 18. COLLECT COIN
+// 20. COLLECT COIN
 // ============================================================
 
 function collectCoin(index) {
@@ -1631,7 +1726,7 @@ function collectCoin(index) {
 
 
 // ============================================================
-// 19. SPAWN SYSTEM
+// 21. SPAWN SYSTEM
 // ============================================================
 
 function spawnObjects() {
@@ -1641,11 +1736,8 @@ function spawnObjects() {
 
 
     const lane =
+        [-laneWidth, 0, laneWidth]
         [
-            -laneWidth,
-            0,
-            laneWidth
-        ][
             Math.floor(
                 Math.random() * 3
             )
@@ -1656,27 +1748,41 @@ function spawnObjects() {
         Math.random();
 
 
-    if (random < 0.18) {
+    if (
+        random < 0.18
+    ) {
 
-        createTrain(lane);
-
-    }
-
-    else if (random < 0.36) {
-
-        createBarrier(lane);
+        createTrain(
+            lane
+        );
 
     }
 
-    else if (random < 0.52) {
+    else if (
+        random < 0.36
+    ) {
 
-        createTrafficCar(lane);
+        createBarrier(
+            lane
+        );
+
+    }
+
+    else if (
+        random < 0.52
+    ) {
+
+        createTrafficCar(
+            lane
+        );
 
     }
 
     else {
 
-        createCoinLine(lane);
+        createCoinLine(
+            lane
+        );
 
     }
 
@@ -1699,7 +1805,7 @@ function spawnObjects() {
 
 
 // ============================================================
-// 20. TRAIN
+// 22. TRAIN
 // ============================================================
 
 function createTrain(lane) {
@@ -1739,7 +1845,7 @@ function createTrain(lane) {
 
 
 // ============================================================
-// 21. BARRIER
+// 23. BARRIER
 // ============================================================
 
 function createBarrier(lane) {
@@ -1777,7 +1883,7 @@ function createBarrier(lane) {
 
 
 // ============================================================
-// 22. TRAFFIC CAR
+// 24. TRAFFIC CAR
 // ============================================================
 
 function createTrafficCar(lane) {
@@ -1797,8 +1903,10 @@ function createTrafficCar(lane) {
 
             new THREE.MeshStandardMaterial({
                 color:
-                    Math.random() > 0.5 ?
-                    0xc62828 :
+                    Math.random() > 0.5
+                    ?
+                    0xc62828
+                    :
                     0x1565c0
             })
 
@@ -1850,7 +1958,7 @@ function createTrafficCar(lane) {
 
 
 // ============================================================
-// 23. COINS
+// 25. COIN LINE
 // ============================================================
 
 function createCoinLine(lane) {
@@ -1902,8 +2010,8 @@ function createCoinLine(lane) {
 
 
 // ============================================================
-// 24. FOOTBALL ⚽
-/* ============================================================ */
+// 26. FOOTBALL ⚽
+// ============================================================
 
 function kickFootball() {
 
@@ -2050,7 +2158,7 @@ function kickFootball() {
 
 
 // ============================================================
-// 25. CAR MODE 🚗
+// 27. CAR MODE 🚗
 // ============================================================
 
 function enterCar() {
@@ -2081,8 +2189,6 @@ function enterCar() {
     car.visible = true;
 
 
-    // Keep car in player's lane.
-
     car.position.x =
         player.position.x;
 
@@ -2092,13 +2198,14 @@ function enterCar() {
 
     score += 100;
 
+
     updateHUD();
 
 }
 
 
 // ============================================================
-// 26. PLAYER CAR
+// 28. PLAYER CAR
 // ============================================================
 
 function createPlayerCar() {
@@ -2155,6 +2262,8 @@ function createPlayerCar() {
 
     car.add(roof);
 
+
+    // WHEELS
 
     for (
         let x of [-1, 1]
@@ -2214,38 +2323,7 @@ function createPlayerCar() {
 
 
 // ============================================================
-// 27. UPDATE CAR
-// ============================================================
-
-function updateCar() {
-
-    if (
-        !car ||
-        !isDriving ||
-        !gameActive
-    )
-        return;
-
-
-    const targetX =
-        currentLane *
-        laneWidth;
-
-
-    car.position.x +=
-        (
-            targetX -
-            car.position.x
-        ) * 0.18;
-
-
-    car.position.y = 0;
-
-}
-
-
-// ============================================================
-// 28. EXIT CAR
+// 29. EXIT CAR
 // ============================================================
 
 function exitCar() {
@@ -2264,17 +2342,13 @@ function exitCar() {
 
         player.visible = true;
 
-        player.position.x =
-            currentLane *
-            laneWidth;
-
     }
 
 }
 
 
 // ============================================================
-// 29. SKATEBOARD 🛹
+// 30. SKATEBOARD 🛹
 // ============================================================
 
 function activateSkateboard() {
@@ -2309,8 +2383,6 @@ function activateSkateboard() {
     }
 
 
-    // 15 SECOND TIMER
-
     skateboardTimer =
         setTimeout(
             function() {
@@ -2325,7 +2397,7 @@ function activateSkateboard() {
 
 
 // ============================================================
-// 30. CREATE SKATEBOARD
+// 31. CREATE SKATEBOARD
 // ============================================================
 
 function createSkateboard() {
@@ -2357,6 +2429,8 @@ function createSkateboard() {
 
     skateboard.add(board);
 
+
+    // WHEELS
 
     for (
         let x of [-0.48, 0.48]
@@ -2411,7 +2485,7 @@ function createSkateboard() {
 
 
 // ============================================================
-// 31. UPDATE SKATEBOARD
+// 32. SKATEBOARD UPDATE
 // ============================================================
 
 function updateSkateboard() {
@@ -2424,8 +2498,6 @@ function updateSkateboard() {
 
 
     skateboard.position.copy(
-        isDriving ?
-        car.position :
         player.position
     );
 
@@ -2441,7 +2513,7 @@ function updateSkateboard() {
 
 
 // ============================================================
-// 32. DEACTIVATE SKATEBOARD
+// 33. DEACTIVATE SKATEBOARD
 // ============================================================
 
 function deactivateSkateboard() {
@@ -2470,7 +2542,7 @@ function deactivateSkateboard() {
 
 
 // ============================================================
-// 33. MOBILE ACTION BUTTONS
+// 34. MOBILE ACTION BUTTONS
 // ============================================================
 
 function createActionButtons() {
@@ -2496,54 +2568,32 @@ function createActionButtons() {
         "mobile-actions";
 
 
-    // --------------------------------------------------------
-    // FIXED TO BOTTOM OF PHONE
-    // --------------------------------------------------------
-
     container.style.position =
         "fixed";
 
-    container.style.left =
-        "0";
-
-    container.style.right =
-        "0";
-
     container.style.bottom =
-        "calc(14px + env(safe-area-inset-bottom))";
+        "15px";
 
+    container.style.left =
+        "50%";
 
-    container.style.width =
-        "100%";
-
+    container.style.transform =
+        "translateX(-50%)";
 
     container.style.display =
         "flex";
 
-
-    container.style.justifyContent =
-        "center";
-
-
-    container.style.alignItems =
-        "center";
-
-
     container.style.gap =
         "8px";
 
-
-    container.style.padding =
-        "0 10px";
-
-
-    container.style.boxSizing =
-        "border-box";
-
-
     container.style.zIndex =
-        "99999";
+        "9999";
 
+    container.style.width =
+        "96%";
+
+    container.style.justifyContent =
+        "center";
 
     container.style.pointerEvents =
         "auto";
@@ -2553,7 +2603,7 @@ function createActionButtons() {
 
         {
             id: "football-btn",
-            text: "⚽ KICK",
+            text: "⚽ BALL",
             action: kickFootball
         },
 
@@ -2585,90 +2635,42 @@ function createActionButtons() {
                 item.id;
 
 
-            button.type =
-                "button";
-
-
             button.innerText =
                 item.text;
 
 
-            // ------------------------------------------------
-            // BUTTON DESIGN
-            // ------------------------------------------------
+            button.style.padding =
+                "14px 12px";
 
             button.style.minWidth =
-                "88px";
-
-
-            button.style.height =
-                "52px";
-
-
-            button.style.padding =
-                "0 12px";
-
+                "90px";
 
             button.style.border =
-                "2px solid rgba(255,255,255,0.18)";
-
+                "none";
 
             button.style.borderRadius =
                 "16px";
 
-
             button.style.background =
-                "rgba(10,10,10,0.90)";
-
+                "rgba(10,10,10,0.88)";
 
             button.style.color =
                 "white";
 
-
             button.style.fontSize =
-                "14px";
-
+                "15px";
 
             button.style.fontWeight =
-                "800";
-
+                "bold";
 
             button.style.boxShadow =
-                "0 5px 20px rgba(0,0,0,0.45)";
-
+                "0 4px 15px rgba(0,0,0,0.4)";
 
             button.style.touchAction =
                 "manipulation";
 
-
-            button.style.userSelect =
-                "none";
-
-
-            button.style.webkitUserSelect =
-                "none";
-
-
-            button.style.cursor =
-                "pointer";
-
-
-            // ------------------------------------------------
-            // TOUCH
-            // ------------------------------------------------
-
-            button.addEventListener(
-                "touchstart",
-                function(e) {
-
-                    e.preventDefault();
-                    e.stopPropagation();
-
-                },
-                {
-                    passive: false
-                }
-            );
+            button.style.webkitTapHighlightColor =
+                "transparent";
 
 
             button.addEventListener(
@@ -2676,6 +2678,7 @@ function createActionButtons() {
                 function(e) {
 
                     e.preventDefault();
+
                     e.stopPropagation();
 
                     item.action();
@@ -2687,15 +2690,12 @@ function createActionButtons() {
             );
 
 
-            // ------------------------------------------------
-            // CLICK
-            // ------------------------------------------------
-
             button.addEventListener(
                 "click",
                 function(e) {
 
                     e.preventDefault();
+
                     e.stopPropagation();
 
                     item.action();
@@ -2720,7 +2720,7 @@ function createActionButtons() {
 
 
 // ============================================================
-// 34. KEYBOARD CONTROLS
+// 35. KEYBOARD CONTROLS
 // ============================================================
 
 function handleKeyboard(e) {
@@ -2733,754 +2733,12 @@ function handleKeyboard(e) {
         e.key.toLowerCase();
 
 
+    // LEFT
+
     if (
         key === "arrowleft" ||
         key === "a"
     ) {
 
         if (
-            currentLane > -1
-        ) {
-
-            currentLane--;
-
-        }
-
-    }
-
-
-    if (
-        key === "arrowright" ||
-        key === "d"
-    ) {
-
-        if (
-            currentLane < 1
-        ) {
-
-            currentLane++;
-
-        }
-
-    }
-
-
-    if (
-        key === "arrowup" ||
-        key === "w" ||
-        key === " "
-    ) {
-
-        jump();
-
-    }
-
-
-    if (
-        key === "arrowdown" ||
-        key === "s"
-    ) {
-
-        slide();
-
-    }
-
-
-    if (key === "f") {
-
-        kickFootball();
-
-    }
-
-
-    if (key === "c") {
-
-        enterCar();
-
-    }
-
-
-    if (key === "b") {
-
-        activateSkateboard();
-
-    }
-
-}
-
-
-// ============================================================
-// 35. JUMP
-// ============================================================
-
-function jump() {
-
-    if (
-        !gameActive ||
-        isJumping ||
-        isDriving
-    )
-        return;
-
-
-    isJumping = true;
-
-    yVelocity =
-        jumpForce;
-
-}
-
-
-// ============================================================
-// 36. SLIDE
-// ============================================================
-
-function slide() {
-
-    if (
-        !gameActive ||
-        isDriving
-    )
-        return;
-
-
-    if (isSliding)
-        return;
-
-
-    isSliding = true;
-
-
-    player.scale.y =
-        0.55;
-
-
-    setTimeout(
-        function() {
-
-            isSliding = false;
-
-            player.scale.y =
-                1;
-
-        },
-        600
-    );
-
-}
-
-
-// ============================================================
-// 37. TOUCH CONTROLS
-// ============================================================
-
-function setupTouchControls() {
-
-    window.addEventListener(
-        "touchstart",
-        function(e) {
-
-            if (
-                e.touches &&
-                e.touches.length > 0
-            ) {
-
-                touchStartX =
-                    e.touches[0].clientX;
-
-                touchStartY =
-                    e.touches[0].clientY;
-
-            }
-
-        },
-        {
-            passive: true
-        }
-    );
-
-
-    window.addEventListener(
-        "touchend",
-        function(e) {
-
-            if (
-                !gameActive ||
-                !e.changedTouches ||
-                !e.changedTouches.length
-            )
-                return;
-
-
-            // Don't process swipes if the
-            // user touched the action buttons.
-
-            if (
-                e.target &&
-                e.target.closest(
-                    "#mobile-actions"
-                )
-            ) {
-
-                return;
-
-            }
-
-
-            const endX =
-                e.changedTouches[0].clientX;
-
-
-            const endY =
-                e.changedTouches[0].clientY;
-
-
-            const deltaX =
-                endX -
-                touchStartX;
-
-
-            const deltaY =
-                endY -
-                touchStartY;
-
-
-            if (
-                Math.abs(deltaX) < 35 &&
-                Math.abs(deltaY) < 35
-            ) {
-
-                return;
-
-            }
-
-
-            if (
-                Math.abs(deltaX) >
-                Math.abs(deltaY)
-            ) {
-
-                if (
-                    deltaX > 35 &&
-                    currentLane < 1
-                ) {
-
-                    currentLane++;
-
-                }
-
-
-                if (
-                    deltaX < -35 &&
-                    currentLane > -1
-                ) {
-
-                    currentLane--;
-
-                }
-
-            }
-
-            else {
-
-                if (
-                    deltaY < -35
-                ) {
-
-                    jump();
-
-                }
-
-
-                if (
-                    deltaY > 35
-                ) {
-
-                    slide();
-
-                }
-
-            }
-
-        },
-        {
-            passive: true
-        }
-    );
-
-
-    // --------------------------------------------------------
-    // DOUBLE TAP = SKATEBOARD
-    // --------------------------------------------------------
-
-    window.addEventListener(
-        "touchend",
-        function(e) {
-
-            if (
-                !gameActive ||
-                (
-                    e.target &&
-                    e.target.closest(
-                        "#mobile-actions"
-                    )
-                )
-            ) {
-
-                return;
-
-            }
-
-
-            const now =
-                Date.now();
-
-
-            if (
-                now -
-                lastTapTime <
-                350
-            ) {
-
-                activateSkateboard();
-
-                lastTapTime = 0;
-
-                return;
-
-            }
-
-
-            lastTapTime =
-                now;
-
-        }
-    );
-
-}
-
-
-// ============================================================
-// 38. DOUBLE CLICK = SKATEBOARD
-// ============================================================
-
-window.addEventListener(
-    "dblclick",
-    function() {
-
-        if (gameActive) {
-
-            activateSkateboard();
-
-        }
-
-    }
-);
-
-
-// ============================================================
-// 39. HUD
-// ============================================================
-
-function updateHUD() {
-
-    const scoreElement =
-        document.getElementById(
-            "score-val"
-        );
-
-
-    const coinElement =
-        document.getElementById(
-            "coin-val"
-        );
-
-
-    if (scoreElement) {
-
-        scoreElement.innerText =
-            score;
-
-    }
-
-
-    if (coinElement) {
-
-        coinElement.innerText =
-            sessionCoins;
-
-    }
-
-
-    const banked =
-        document.getElementById(
-            "banked-coins"
-        );
-
-
-    if (banked) {
-
-        try {
-
-            banked.innerText =
-                localStorage.getItem(
-                    "kollins_coins"
-                ) || 0;
-
-        }
-        catch(error) {
-
-            banked.innerText =
-                "0";
-
-        }
-
-    }
-
-}
-
-
-// ============================================================
-// 40. COIN EFFECT
-// ============================================================
-
-function createCoinEffect() {
-
-    const ring =
-        new THREE.Mesh(
-
-            new THREE.RingGeometry(
-                0.3,
-                0.55,
-                16
-            ),
-
-            new THREE.MeshBasicMaterial({
-                color: 0xffd700,
-                transparent: true,
-                opacity: 0.9,
-                side:
-                    THREE.DoubleSide
-            })
-
-        );
-
-
-    ring.position.copy(
-        isDriving ?
-        car.position :
-        player.position
-    );
-
-
-    ring.position.y +=
-        1;
-
-
-    scene.add(ring);
-
-
-    effects.push({
-        mesh: ring,
-        life: 1
-    });
-
-}
-
-
-// ============================================================
-// 41. IMPACT EFFECT
-// ============================================================
-
-function createImpactEffect() {
-
-    const ring =
-        new THREE.Mesh(
-
-            new THREE.RingGeometry(
-                0.4,
-                0.7,
-                20
-            ),
-
-            new THREE.MeshBasicMaterial({
-                color: 0xffffff,
-                transparent: true,
-                opacity: 1,
-                side:
-                    THREE.DoubleSide
-            })
-
-        );
-
-
-    ring.position.copy(
-        isDriving ?
-        car.position :
-        player.position
-    );
-
-
-    ring.position.y +=
-        1;
-
-
-    scene.add(ring);
-
-
-    effects.push({
-        mesh: ring,
-        life: 1
-    });
-
-}
-
-
-// ============================================================
-// 42. EFFECT UPDATE
-// ============================================================
-
-function updateEffects() {
-
-    for (
-        let i =
-            effects.length - 1;
-        i >= 0;
-        i--
-    ) {
-
-        const effect =
-            effects[i];
-
-
-        effect.life -=
-            0.04;
-
-
-        effect.mesh.scale.multiplyScalar(
-            1.08
-        );
-
-
-        effect.mesh.material.opacity =
-            effect.life;
-
-
-        if (
-            effect.life <= 0
-        ) {
-
-            scene.remove(
-                effect.mesh
-            );
-
-
-            effects.splice(
-                i,
-                1
-            );
-
-        }
-
-    }
-
-}
-
-
-// ============================================================
-// 43. CLEAR OBJECTS
-// ============================================================
-
-function clearObjects() {
-
-    obstacles.forEach(
-        obj =>
-            scene.remove(obj)
-    );
-
-
-    coins.forEach(
-        coin =>
-            scene.remove(coin)
-    );
-
-
-    movingVehicles.forEach(
-        vehicle =>
-            scene.remove(vehicle)
-    );
-
-
-    obstacles = [];
-
-    coins = [];
-
-    movingVehicles = [];
-
-
-    if (football) {
-
-        scene.remove(
-            football
-        );
-
-        football = null;
-
-    }
-
-}
-
-
-// ============================================================
-// 44. HIDE ELEMENT
-// ============================================================
-
-function hideElement(id) {
-
-    const element =
-        document.getElementById(id);
-
-
-    if (element) {
-
-        element.classList.add(
-            "hidden"
-        );
-
-
-        element.style.pointerEvents =
-            "none";
-
-    }
-
-}
-
-
-// ============================================================
-// 45. SHOW ELEMENT
-// ============================================================
-
-function showElement(id) {
-
-    const element =
-        document.getElementById(id);
-
-
-    if (element) {
-
-        element.classList.remove(
-            "hidden"
-        );
-
-
-        element.style.pointerEvents =
-            "auto";
-
-    }
-
-}
-
-
-// ============================================================
-// 46. RESIZE
-// ============================================================
-
-function onWindowResize() {
-
-    if (
-        !camera ||
-        !renderer
-    )
-        return;
-
-
-    camera.aspect =
-        window.innerWidth /
-        window.innerHeight;
-
-
-    camera.updateProjectionMatrix();
-
-
-    renderer.setSize(
-        window.innerWidth,
-        window.innerHeight
-    );
-
-}
-
-
-// ============================================================
-// 47. ANIMATION LOOP
-// ============================================================
-
-function animate() {
-
-    requestAnimationFrame(
-        animate
-    );
-
-
-    const now =
-        performance.now();
-
-
-    const delta =
-        Math.min(
-            0.05,
-            (
-                now -
-                lastFrameTime
-            ) / 1000
-        );
-
-
-    lastFrameTime =
-        now;
-
-
-    if (gameActive) {
-
-        updatePlayer(delta);
-
-        updateObjects();
-
-        updatePolice();
-
-        updateCar();
-
-        updateSkateboard();
-
-        updateEffects();
-
-    }
-
-
-    if (
-        renderer &&
-        scene &&
-        camera
-    ) {
-
-        renderer.render(
-            scene,
-            camera
-        );
-
-    }
-
-}
-
-
-// ============================================================
-// 48. START AFTER HTML LOAD
-// ============================================================
-
-window.addEventListener(
-    "DOMContentLoaded",
-    function() {
-
-        init();
-
-    }
-);
+            currentLane >
