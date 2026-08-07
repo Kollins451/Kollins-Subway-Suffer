@@ -1306,3 +1306,38 @@ function resetGame(){
 
 
 }
+// ============================================
+// FINAL BUTTON CONNECTION FIX
+// ============================================
+
+window.addEventListener("load", function(){
+
+    const playBtn = document.getElementById("play-btn");
+    const retryBtn = document.getElementById("retry-btn");
+
+
+    if(playBtn){
+
+        playBtn.onclick = function(){
+
+            startGame();
+
+        };
+
+    }
+
+
+    if(retryBtn){
+
+        retryBtn.onclick = function(){
+
+            resetGame();
+
+        };
+
+    }
+
+
+    console.log("Subway Surfers buttons connected");
+
+});
