@@ -389,3 +389,101 @@ function createChaser(){
     scene.add(chaser);
 
 }
+// ============================================
+// BUTTON + GAME START FIX
+// ============================================
+
+function startGame(){
+
+    const menu = document.getElementById("menu-screen");
+
+    if(menu){
+        menu.classList.add("hidden");
+    }
+
+    gameActive = true;
+
+    score = 0;
+    sessionCoins = 0;
+
+    const scoreDisplay = document.getElementById("score-val");
+    const coinDisplay = document.getElementById("coin-val");
+
+    if(scoreDisplay){
+        scoreDisplay.innerText = score;
+    }
+
+    if(coinDisplay){
+        coinDisplay.innerText = sessionCoins;
+    }
+
+    // Start spawning items if function exists
+    if(typeof spawnProceduralItemsLoop === "function"){
+        spawnProceduralItemsLoop();
+    }
+
+}
+
+
+
+function resetGame(){
+
+    const gameOver =
+    document.getElementById("gameover-screen");
+
+    if(gameOver){
+        gameOver.classList.add("hidden");
+    }
+
+    startGame();
+
+}
+
+
+
+// ============================================
+// CONNECT BUTTONS AFTER PAGE LOAD
+// ============================================
+
+window.addEventListener("DOMContentLoaded",()=>{
+
+
+    const playButton =
+    document.getElementById("play-btn");
+
+
+    const retryButton =
+    document.getElementById("retry-btn");
+
+
+
+    if(playButton){
+
+        playButton.addEventListener(
+            "click",
+            startGame
+        );
+
+    }
+
+
+
+    if(retryButton){
+
+        retryButton.addEventListener(
+            "click",
+            resetGame
+        );
+
+    }
+
+
+
+    if(typeof init === "function"){
+
+        init();
+
+    }
+
+
+});
