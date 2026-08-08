@@ -1,5 +1,6 @@
 // ============================================================
-// KOLLINS RUNNER — COMPLETE WORKING GAME
+// KOLLINS RUNNER — COMPLETE GAME
+// Three.js r128 compatible
 // ============================================================
 
 let scene, camera, renderer;
@@ -14,7 +15,6 @@ const laneWidth = 3.3;
 let score = 0;
 let sessionCoins = 0;
 let speed = 0.42;
-
 const maxSpeed = 0.95;
 
 let obstacles = [];
@@ -22,7 +22,6 @@ let coins = [];
 
 let isJumping = false;
 let isDriving = false;
-
 let yVelocity = 0;
 
 const gravity = 0.020;
@@ -32,6 +31,8 @@ let spawnTimer = null;
 let footballTimer = null;
 
 let audioContext = null;
+let carSoundOscillator = null;
+let carSoundGain = null;
 
 let lastFrameTime = performance.now();
 
@@ -84,12 +85,11 @@ function init() {
 
     renderer.shadowMap.enabled = true;
 
-    renderer.shadowMap.type =
-        THREE.PCFSoftShadowMap;
-
     renderer.domElement.style.position = "fixed";
     renderer.domElement.style.left = "0";
     renderer.domElement.style.top = "0";
+    renderer.domElement.style.width = "100%";
+    renderer.domElement.style.height = "100%";
     renderer.domElement.style.zIndex = "0";
 
     document.body.appendChild(renderer.domElement);
@@ -118,6 +118,7 @@ function init() {
     createWorld();
     createRunner();
     createPolice();
+    createPlayerCar();
 
     setupButtons();
     setupControls();
@@ -149,13 +150,17 @@ function createWorld() {
 
     road.rotation.x = -Math.PI / 2;
     road.position.z = -1500;
-    road.receiveShadow = true;
 
     scene.add(road);
 
 
-    // TRACK LINES
-    for (let x of [-laneWidth / 2, laneWidth / 2]) {
+    // LANE LINES
+    for (
+        const x of [
+            -laneWidth / 2,
+            laneWidth / 2
+        ]
+    ) {
 
         const line =
             new THREE.Mesh(
@@ -180,7 +185,9 @@ function createWorld() {
 
 
     // RAILS
-    for (let x of [-5.2, 5.2]) {
+    for (
+        const x of [-5.2, 5.2]
+    ) {
 
         const rail =
             new THREE.Mesh(
@@ -307,7 +314,8 @@ function createStreetLight(x, z) {
             new THREE.CylinderGeometry(
                 0.08,
                 0.08,
-                6
+                6,
+                12
             ),
             new THREE.MeshStandardMaterial({
                 color: 0x444444
@@ -403,12 +411,12 @@ function createRunner() {
         );
 
     hair.scale.y = 0.55;
-
     hair.position.y = 2.48;
 
     player.add(hair);
 
 
+    // LEGS
     const leftLeg =
         createLimb(
             0.24,
@@ -442,6 +450,7 @@ function createRunner() {
     player.userData.rightLeg = rightLeg;
 
 
+    // ARMS
     const leftArm =
         createLimb(
             0.20,
@@ -474,28 +483,74 @@ function createRunner() {
     player.userData.leftArm = leftArm;
     player.userData.rightArm = rightArm;
 
-
     scene.add(player);
 }
 
 
 // ============================================================
 // LIMB
+// IMPORTANT: compatible with Three.js r128
 // ============================================================
 
 function createLimb(radius, height, color) {
 
-    return new THREE.Mesh(
-        new THREE.CapsuleGeometry(
-            radius,
-            height,
-            6,
-            12
-        ),
-        new THREE.MeshStandardMaterial({
-            color: color
-        })
-    );
+    const group =
+        new THREE.Group();
+
+
+    const cylinder =
+        new THREE.Mesh(
+            new THREE.CylinderGeometry(
+                radius,
+                radius,
+                height,
+                12
+            ),
+            new THREE.MeshStandardMaterial({
+                color: color
+            })
+        );
+
+    group.add(cylinder);
+
+
+    const top =
+        new THREE.Mesh(
+            new THREE.SphereGeometry(
+                radius,
+                12,
+                12
+            ),
+            new THREE.MeshStandardMaterial({
+                color: color
+            })
+        );
+
+    top.position.y =
+        height / 2;
+
+    group.add(top);
+
+
+    const bottom =
+        new THREE.Mesh(
+            new THREE.SphereGeometry(
+                radius,
+                12,
+                12
+            ),
+            new THREE.MeshStandardMaterial({
+                color: color
+            })
+        );
+
+    bottom.position.y =
+        -height / 2;
+
+    group.add(bottom);
+
+
+    return group;
 }
 
 
@@ -506,6 +561,7 @@ function createLimb(radius, height, color) {
 function createPolice() {
 
     police = new THREE.Group();
+
 
     const body =
         new THREE.Mesh(
@@ -552,7 +608,7 @@ function createPolice() {
 
 
 // ============================================================
-// BUTTON SETUP
+// BUTTONS
 // ============================================================
 
 function setupButtons() {
@@ -566,34 +622,67 @@ function setupButtons() {
 
     if (playButton) {
 
-        playButton.onclick = function(e) {
+        playButton.addEventListener(
+            "click",
+            function(e) {
 
-            e.preventDefault();
+                e.preventDefault();
+                e.stopPropagation();
 
-            startGame();
-        };
+                startGame();
+            }
+        );
+
+        playButton.addEventListener(
+            "touchend",
+            function(e) {
+
+                e.preventDefault();
+                e.stopPropagation();
+
+                startGame();
+            },
+            {
+                passive: false
+            }
+        );
     }
 
 
     if (retryButton) {
 
-        retryButton.onclick = function(e) {
+        retryButton.addEventListener(
+            "click",
+            function(e) {
 
-            e.preventDefault();
+                e.preventDefault();
+                e.stopPropagation();
 
-            startGame();
-        };
+                startGame();
+            }
+        );
+
+        retryButton.addEventListener(
+            "touchend",
+            function(e) {
+
+                e.preventDefault();
+                e.stopPropagation();
+
+                startGame();
+            },
+            {
+                passive: false
+            }
+        );
     }
 
 
-    // CAR BUTTON
     createGameButton(
         "🚗 CAR",
         enterCar
     );
 
-
-    // BALL BUTTON
     createGameButton(
         "⚽ KICK",
         kickFootball
@@ -602,7 +691,7 @@ function setupButtons() {
 
 
 // ============================================================
-// MOBILE GAME BUTTONS
+// MOBILE BUTTONS
 // ============================================================
 
 function createGameButton(text, action) {
@@ -611,6 +700,7 @@ function createGameButton(text, action) {
         document.getElementById(
             "game-action-buttons"
         );
+
 
     if (!container) {
 
@@ -626,12 +716,14 @@ function createGameButton(text, action) {
         container.style.transform =
             "translateX(-50%)";
 
-        container.style.zIndex = "9999";
+        container.style.zIndex = "99999";
 
         container.style.display = "flex";
         container.style.gap = "10px";
 
-        document.body.appendChild(container);
+        document.body.appendChild(
+            container
+        );
     }
 
 
@@ -667,7 +759,9 @@ function createGameButton(text, action) {
 
             e.preventDefault();
 
-            action();
+            if (gameActive) {
+                action();
+            }
         }
     );
 
@@ -702,7 +796,6 @@ function startGame() {
 
     clearObjects();
 
-
     player.position.set(
         0,
         0,
@@ -711,11 +804,7 @@ function startGame() {
 
     player.visible = true;
 
-
-    if (car) {
-        car.visible = false;
-    }
-
+    car.visible = false;
 
     police.position.set(
         0,
@@ -724,14 +813,11 @@ function startGame() {
     );
 
 
-    hideScreen(
-        "menu-screen"
-    );
+    hideScreen("menu-screen");
+    hideScreen("gameover-screen");
 
-    hideScreen(
-        "gameover-screen"
-    );
 
+    playStartSound();
 
     spawnObjects();
 
@@ -748,16 +834,22 @@ function gameOver() {
     if (!gameActive) return;
 
     gameActive = false;
-
     gameOverState = true;
 
 
     if (spawnTimer) {
 
-        clearTimeout(spawnTimer);
+        clearTimeout(
+            spawnTimer
+        );
 
         spawnTimer = null;
     }
+
+
+    stopCarSound();
+
+    playGameOverSound();
 
 
     const screen =
@@ -765,14 +857,17 @@ function gameOver() {
             "gameover-screen"
         );
 
+
     if (screen) {
 
         screen.classList.remove(
             "hidden"
         );
 
+
         const text =
             screen.querySelector("p");
+
 
         if (text) {
 
@@ -787,7 +882,7 @@ function gameOver() {
 
 
 // ============================================================
-// OBJECT CLEANUP
+// CLEANUP
 // ============================================================
 
 function clearObjects() {
@@ -806,15 +901,29 @@ function clearObjects() {
 
     if (spawnTimer) {
 
-        clearTimeout(spawnTimer);
+        clearTimeout(
+            spawnTimer
+        );
 
         spawnTimer = null;
     }
 
 
+    if (footballTimer) {
+
+        clearInterval(
+            footballTimer
+        );
+
+        footballTimer = null;
+    }
+
+
     if (football) {
 
-        scene.remove(football);
+        scene.remove(
+            football
+        );
 
         football = null;
     }
@@ -822,7 +931,7 @@ function clearObjects() {
 
 
 // ============================================================
-// SPAWN OBJECTS
+// SPAWN
 // ============================================================
 
 function spawnObjects() {
@@ -836,10 +945,12 @@ function spawnObjects() {
         laneWidth
     ];
 
+
     const lane =
         lanes[
             Math.floor(
-                Math.random() * lanes.length
+                Math.random() *
+                lanes.length
             )
         ];
 
@@ -1042,7 +1153,7 @@ function createCoinLine(lane) {
 
 
 // ============================================================
-// UPDATE OBJECTS
+// OBJECT UPDATE
 // ============================================================
 
 function updateObjects() {
@@ -1064,6 +1175,7 @@ function updateObjects() {
 
 
         if (
+            !isJumping &&
             checkCollision(
                 player,
                 obj
@@ -1102,8 +1214,14 @@ function updateObjects() {
         coin.rotation.y += 0.1;
 
 
+        const target =
+            isDriving
+            ? car
+            : player;
+
+
         if (
-            player.position.distanceTo(
+            target.position.distanceTo(
                 coin.position
             ) < 1.5
         ) {
@@ -1125,8 +1243,9 @@ function updateObjects() {
     }
 
 
-    // SPEED
-    if (speed < maxSpeed) {
+    if (
+        speed < maxSpeed
+    ) {
 
         speed += 0.000035;
     }
@@ -1192,7 +1311,7 @@ function removeObstacle(index) {
 
 
 // ============================================================
-// COLLECT COIN
+// COIN
 // ============================================================
 
 function collectCoin(index) {
@@ -1249,13 +1368,20 @@ function updatePlayer() {
             isJumping = false;
 
             yVelocity = 0;
+
+            playLandSound();
         }
     }
 
 
     // LANE
     const targetX =
-        currentLane * laneWidth;
+        currentLane *
+        laneWidth;
+
+
+    const oldX =
+        player.position.x;
 
 
     player.position.x +=
@@ -1265,6 +1391,16 @@ function updatePlayer() {
         ) * 0.18;
 
 
+    if (
+        Math.abs(
+            player.position.x -
+            oldX
+        ) > 0.02
+    ) {
+        // movement handled silently
+    }
+
+
     // RUNNING
     if (
         gameActive &&
@@ -1272,7 +1408,8 @@ function updatePlayer() {
     ) {
 
         const t =
-            performance.now() * 0.012;
+            performance.now() *
+            0.012;
 
 
         player.userData.leftLeg.rotation.x =
@@ -1308,7 +1445,7 @@ function updatePolice() {
 
 
 // ============================================================
-// CAR
+// PLAYER CAR
 // ============================================================
 
 function createPlayerCar() {
@@ -1353,9 +1490,13 @@ function createPlayerCar() {
 
 
     // WHEELS
-    for (let x of [-1, 1]) {
+    for (
+        const x of [-1, 1]
+    ) {
 
-        for (let z of [-1.25, 1.25]) {
+        for (
+            const z of [-1.25, 1.25]
+        ) {
 
             const wheel =
                 new THREE.Mesh(
@@ -1405,12 +1546,6 @@ function enterCar() {
     if (!gameActive) return;
 
 
-    if (!car) {
-
-        createPlayerCar();
-    }
-
-
     if (isDriving) {
 
         isDriving = false;
@@ -1420,6 +1555,8 @@ function enterCar() {
         player.visible = true;
 
         stopCarSound();
+
+        playExitCarSound();
 
         return;
     }
@@ -1433,6 +1570,8 @@ function enterCar() {
     car.visible = true;
 
     player.visible = false;
+
+    playEnterCarSound();
 
     playCarSound();
 
@@ -1486,6 +1625,8 @@ function kickFootball() {
 
 
     scene.add(football);
+
+    playKickSound();
 
 
     if (footballTimer) {
@@ -1578,11 +1719,12 @@ function setupControls() {
         "keydown",
         function(e) {
 
-            if (!gameActive) return;
-
-
             const key =
                 e.key.toLowerCase();
+
+
+            if (!gameActive)
+                return;
 
 
             if (
@@ -1595,6 +1737,8 @@ function setupControls() {
                         -1,
                         currentLane - 1
                     );
+
+                playMoveSound();
             }
 
 
@@ -1608,6 +1752,8 @@ function setupControls() {
                         1,
                         currentLane + 1
                     );
+
+                playMoveSound();
             }
 
 
@@ -1621,17 +1767,13 @@ function setupControls() {
             }
 
 
-            if (
-                key === "c"
-            ) {
+            if (key === "c") {
 
                 enterCar();
             }
 
 
-            if (
-                key === "f"
-            ) {
+            if (key === "f") {
 
                 kickFootball();
             }
@@ -1650,8 +1792,11 @@ function setupControls() {
             const touch =
                 e.touches[0];
 
-            startX = touch.clientX;
-            startY = touch.clientY;
+            startX =
+                touch.clientX;
+
+            startY =
+                touch.clientY;
         },
         {
             passive: true
@@ -1670,11 +1815,15 @@ function setupControls() {
             const touch =
                 e.changedTouches[0];
 
+
             const dx =
-                touch.clientX - startX;
+                touch.clientX -
+                startX;
+
 
             const dy =
-                touch.clientY - startY;
+                touch.clientY -
+                startY;
 
 
             if (
@@ -1690,6 +1839,8 @@ function setupControls() {
                             currentLane + 1
                         );
 
+                    playMoveSound();
+
                 } else if (dx < -40) {
 
                     currentLane =
@@ -1697,6 +1848,8 @@ function setupControls() {
                             -1,
                             currentLane - 1
                         );
+
+                    playMoveSound();
                 }
 
             } else {
@@ -1719,7 +1872,8 @@ function jump() {
 
     if (
         !gameActive ||
-        isJumping
+        isJumping ||
+        isDriving
     )
         return;
 
@@ -1727,6 +1881,8 @@ function jump() {
     isJumping = true;
 
     yVelocity = jumpForce;
+
+    playJumpSound();
 }
 
 
@@ -1763,13 +1919,14 @@ function updateHUD() {
 
 
 // ============================================================
-// SCREEN HELPERS
+// SCREEN
 // ============================================================
 
 function hideScreen(id) {
 
     const element =
         document.getElementById(id);
+
 
     if (element) {
 
@@ -1781,7 +1938,7 @@ function hideScreen(id) {
 
 
 // ============================================================
-// AUDIO
+// AUDIO ENGINE
 // ============================================================
 
 function initAudio() {
@@ -1809,7 +1966,8 @@ function initAudio() {
 function playTone(
     frequency,
     duration,
-    type = "sine"
+    type = "sine",
+    volume = 0.08
 ) {
 
     if (!audioContext)
@@ -1823,16 +1981,18 @@ function playTone(
         audioContext.createGain();
 
 
-    oscillator.type = type;
+    oscillator.type =
+        type;
 
     oscillator.frequency.value =
         frequency;
 
 
     gain.gain.setValueAtTime(
-        0.08,
+        volume,
         audioContext.currentTime
     );
+
 
     gain.gain.exponentialRampToValueAtTime(
         0.001,
@@ -1850,9 +2010,42 @@ function playTone(
 
     oscillator.start();
 
+
     oscillator.stop(
         audioContext.currentTime +
         duration
+    );
+}
+
+
+// ============================================================
+// SOUND EFFECTS
+// ============================================================
+
+function playStartSound() {
+
+    playTone(
+        440,
+        0.10,
+        "square"
+    );
+
+    setTimeout(
+        () => playTone(
+            660,
+            0.10,
+            "square"
+        ),
+        100
+    );
+
+    setTimeout(
+        () => playTone(
+            880,
+            0.18,
+            "square"
+        ),
+        200
     );
 }
 
@@ -1862,20 +2055,82 @@ function playCoinSound() {
     playTone(
         900,
         0.08,
-        "square"
+        "square",
+        0.07
     );
 
     setTimeout(
-        function() {
-
-            playTone(
-                1300,
-                0.10,
-                "square"
-            );
-
-        },
+        () => playTone(
+            1300,
+            0.10,
+            "square",
+            0.07
+        ),
         70
+    );
+}
+
+
+function playJumpSound() {
+
+    playTone(
+        500,
+        0.10,
+        "triangle",
+        0.06
+    );
+
+    setTimeout(
+        () => playTone(
+            750,
+            0.12,
+            "triangle",
+            0.05
+        ),
+        80
+    );
+}
+
+
+function playLandSound() {
+
+    playTone(
+        120,
+        0.08,
+        "sine",
+        0.05
+    );
+}
+
+
+function playMoveSound() {
+
+    playTone(
+        300,
+        0.05,
+        "square",
+        0.025
+    );
+}
+
+
+function playKickSound() {
+
+    playTone(
+        160,
+        0.12,
+        "sawtooth",
+        0.08
+    );
+
+    setTimeout(
+        () => playTone(
+            90,
+            0.10,
+            "sine",
+            0.05
+        ),
+        50
     );
 }
 
@@ -1885,14 +2140,98 @@ function playHitSound() {
     playTone(
         180,
         0.15,
-        "sawtooth"
+        "sawtooth",
+        0.09
+    );
+
+    setTimeout(
+        () => playTone(
+            90,
+            0.12,
+            "square",
+            0.06
+        ),
+        70
     );
 }
 
 
-let carSoundOscillator = null;
-let carSoundGain = null;
+function playGameOverSound() {
 
+    playTone(
+        400,
+        0.15,
+        "sawtooth",
+        0.07
+    );
+
+    setTimeout(
+        () => playTone(
+            250,
+            0.18,
+            "sawtooth",
+            0.07
+        ),
+        150
+    );
+
+    setTimeout(
+        () => playTone(
+            120,
+            0.30,
+            "sawtooth",
+            0.08
+        ),
+        320
+    );
+}
+
+
+function playEnterCarSound() {
+
+    playTone(
+        300,
+        0.08,
+        "square",
+        0.06
+    );
+
+    setTimeout(
+        () => playTone(
+            600,
+            0.12,
+            "square",
+            0.06
+        ),
+        90
+    );
+}
+
+
+function playExitCarSound() {
+
+    playTone(
+        500,
+        0.08,
+        "square",
+        0.05
+    );
+
+    setTimeout(
+        () => playTone(
+            250,
+            0.12,
+            "square",
+            0.05
+        ),
+        90
+    );
+}
+
+
+// ============================================================
+// CAR ENGINE SOUND
+// ============================================================
 
 function playCarSound() {
 
@@ -1944,8 +2283,7 @@ function stopCarSound() {
 
         } catch (e) {}
 
-        carSoundOscillator =
-            null;
+        carSoundOscillator = null;
     }
 }
 
@@ -1964,7 +2302,9 @@ function resizeGame() {
         window.innerWidth /
         window.innerHeight;
 
+
     camera.updateProjectionMatrix();
+
 
     renderer.setSize(
         window.innerWidth,
@@ -1987,22 +2327,24 @@ function animate() {
     const now =
         performance.now();
 
-    const delta =
-        now - lastFrameTime;
 
-    lastFrameTime = now;
+    lastFrameTime =
+        now;
 
 
     if (gameActive) {
 
-        updatePlayer(delta);
+        updatePlayer();
 
         updateObjects();
 
         updatePolice();
 
 
-        if (isDriving && car) {
+        if (
+            isDriving &&
+            car
+        ) {
 
             car.position.x +=
                 (
