@@ -1,137 +1,233 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+    <meta charset="UTF-8">
 
-<meta charset="UTF-8">
+    <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"
+    >
 
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Subway Surfers Web Edition</title>
 
-<title>Subway Surfers Web Edition</title>
+    <link rel="stylesheet" href="style.css">
 
-<link rel="stylesheet" href="style.css">
+    <!-- THREE.JS -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 
-<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-
-<script src="script.js" defer></script>
-
+    <!-- YOUR GAME JAVASCRIPT -->
+    <script src="script.js" defer></script>
 </head>
-
 
 <body>
 
+    <!-- =========================
+         HUD
+    ========================== -->
 
-<!-- HUD -->
+    <div id="hud">
 
-<div id="hud">
+        <div id="score-box" class="hud-box">
+            SCORE:
+            <span id="score-val">0</span>
+        </div>
 
-    <div id="score-box" class="hud-box">
-        SCORE:
-        <span id="score-val">0</span>
+        <div id="coin-box" class="hud-box">
+            🪙
+            <span id="coin-val">0</span>
+        </div>
+
     </div>
 
 
-    <div id="coin-box" class="hud-box">
-        🪙
-        <span id="coin-val">0</span>
+    <!-- =========================
+         POWER UPS
+    ========================== -->
+
+    <div id="active-powerups">
+
+        <div id="magnet-timer" class="powerup-bar hidden">
+            MAGNET ACTIVE
+            <div id="magnet-progress" class="progress-fill"></div>
+        </div>
+
+        <div id="jetpack-timer" class="powerup-bar hidden">
+            JETPACK ACTIVE
+            <div id="jetpack-progress" class="progress-fill"></div>
+        </div>
+
+        <div id="board-timer" class="powerup-bar hidden">
+            HOVERBOARD ACTIVE
+            <div id="board-progress" class="progress-fill"></div>
+        </div>
+
     </div>
 
-</div>
 
+    <!-- =========================
+         START SCREEN
+    ========================== -->
 
+    <div
+        id="menu-screen"
+        class="modal main-menu"
+    >
 
-<!-- POWER UPS -->
+        <h1>SUBWAY SURFERS</h1>
 
-<div id="active-powerups">
+        <p>Web Edition</p>
 
-    <div id="magnet-timer" class="powerup-bar hidden">
-        MAGNET ACTIVE
-        <div id="magnet-progress" class="progress-fill"></div>
+        <!-- IMPORTANT:
+             ID MUST BE play-btn
+        -->
+        <button
+            id="play-btn"
+            type="button"
+        >
+            ▶ TAP TO PLAY
+        </button>
+
+        <div>
+            TOTAL BANKED COINS:
+            <span id="banked-coins">0</span>
+        </div>
+
     </div>
 
 
-    <div id="jetpack-timer" class="powerup-bar hidden">
-        JETPACK ACTIVE
-        <div id="jetpack-progress" class="progress-fill"></div>
+    <!-- =========================
+         GAME OVER SCREEN
+    ========================== -->
+
+    <div
+        id="gameover-screen"
+        class="modal hidden"
+    >
+
+        <h1>CAUGHT!</h1>
+
+        <p id="gameover-message">
+            Game Over
+        </p>
+
+        <!-- IMPORTANT:
+             ID MUST BE retry-btn
+        -->
+        <button
+            id="retry-btn"
+            type="button"
+        >
+            🔄 RUN AGAIN
+        </button>
+
     </div>
 
 
-    <div id="board-timer" class="powerup-bar hidden">
-        HOVERBOARD ACTIVE
-        <div id="board-progress" class="progress-fill"></div>
+    <!-- =========================
+         MOBILE ACTION BUTTONS
+         Your JS can also create
+         these automatically.
+    ========================== -->
+
+    <div id="mobile-actions"></div>
+
+
+    <!-- =========================
+         CONTROLS
+    ========================== -->
+
+    <div id="controls-hint">
+        Desktop: A/D or Arrows to Move |
+        W/Space to Jump |
+        S to Slide
     </div>
 
-</div>
+
+    <!-- =========================
+         FALLBACK BUTTON SCRIPT
+         This guarantees the HTML
+         buttons respond to tapping.
+    ========================== -->
+
+    <script>
+        document.addEventListener("DOMContentLoaded", function () {
+
+            const playButton =
+                document.getElementById("play-btn");
+
+            const retryButton =
+                document.getElementById("retry-btn");
 
 
+            function startGameFromButton(event) {
+
+                if (event) {
+                    event.preventDefault();
+                    event.stopPropagation();
+                }
+
+                if (typeof startGame === "function") {
+                    startGame();
+                } else {
+                    console.error(
+                        "startGame() was not found. Check script.js."
+                    );
+                }
+            }
 
 
-<!-- START SCREEN -->
+            function restartGameFromButton(event) {
 
-<div id="menu-screen" class="modal main-menu">
+                if (event) {
+                    event.preventDefault();
+                    event.stopPropagation();
+                }
 
-    <h1>
-        SUBWAY SURFERS
-    </h1>
-
-
-    <p>
-        Web Edition
-    </p>
-
-
-    <button id="play-btn">
-        TAP TO PLAY
-    </button>
-
-
-    <div>
-        TOTAL BANKED COINS:
-        <span id="banked-coins">0</span>
-    </div>
-
-</div>
+                if (typeof resetGame === "function") {
+                    resetGame();
+                } else if (typeof startGame === "function") {
+                    startGame();
+                } else {
+                    console.error(
+                        "resetGame() / startGame() was not found."
+                    );
+                }
+            }
 
 
+            if (playButton) {
+
+                playButton.addEventListener(
+                    "click",
+                    startGameFromButton
+                );
+
+                playButton.addEventListener(
+                    "touchend",
+                    startGameFromButton,
+                    { passive: false }
+                );
+
+            }
 
 
+            if (retryButton) {
 
-<!-- GAME OVER SCREEN -->
+                retryButton.addEventListener(
+                    "click",
+                    restartGameFromButton
+                );
 
-<div id="gameover-screen" class="modal hidden">
+                retryButton.addEventListener(
+                    "touchend",
+                    restartGameFromButton,
+                    { passive: false }
+                );
 
-    <h1>
-        CAUGHT!
-    </h1>
+            }
 
-
-    <p>
-        Game Over
-    </p>
-
-
-    <button id="retry-btn">
-        RUN AGAIN
-    </button>
-
-</div>
-
-
-
-
-<!-- THREE JS WILL CREATE CANVAS HERE -->
-
-
-
-<div id="controls-hint">
-
-Desktop: A/D or Arrows to Move |
-W/Space to Jump |
-S to Slide
-
-</div>
-
-
+        });
+    </script>
 
 </body>
-
 </html>
