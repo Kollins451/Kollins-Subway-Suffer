@@ -1,7 +1,5 @@
 // ============================================================
-// KOLLINS RUNNER — STABLE VERSION
-// Train + Cars + Bikes + Motorcycles + Coins + River + Boat
-// Moving environment + High Score + Working Touch Buttons
+// KOLLINS RUNNER — LAND + OCEAN EDITION
 // ============================================================
 
 let scene, camera, renderer;
@@ -21,7 +19,7 @@ const maxSpeed = 0.95;
 
 let obstacles = [];
 let coins = [];
-let scenery = [];
+let powerUps = [];
 
 let isJumping = false;
 let yVelocity = 0;
@@ -29,30 +27,38 @@ let yVelocity = 0;
 const gravity = 0.020;
 const jumpForce = 0.42;
 
+let isBoatMode = false;
+let oceanScoreStart = 5000;
+let oceanDuration = 1800;
+let oceanTimer = 0;
+
+let magnetActive = false;
+let magnetTimer = 0;
+
+let hoverboardActive = false;
+let hoverboardTimer = 0;
+
+let revivalKeys = Number(localStorage.getItem("kollinsRevivalKeys")) || 1;
+
 let spawnTimer = null;
+
 let audioContext = null;
+let carSoundOscillator = null;
+let carSoundGain = null;
 
-let gameMode = "land";
-let riverTimer = 0;
+let worldObjects = [];
+let oceanObjects = [];
 
-let lastTime = performance.now();
-
-let carMode = false;
-let football = null;
-let footballTimer = null;
-
-let initialized = false;
+let lastFrameTime = performance.now();
 
 
 // ============================================================
-// INITIALIZE GAME
+// INITIALIZE
 // ============================================================
 
 function init() {
 
-    if (initialized) return;
-
-    initialized = true;
+    if (renderer) return;
 
     scene = new THREE.Scene();
 
@@ -60,12 +66,11 @@ function init() {
 
     scene.fog = new THREE.Fog(
         0x72c7e8,
-        35,
-        180
+        30,
+        190
     );
 
 
-    // CAMERA
     camera = new THREE.PerspectiveCamera(
         65,
         window.innerWidth / window.innerHeight,
@@ -73,11 +78,7 @@ function init() {
         1000
     );
 
-    camera.position.set(
-        0,
-        5.2,
-        8
-    );
+    camera.position.set(0, 5.2, 8);
 
     camera.lookAt(
         0,
@@ -86,13 +87,13 @@ function init() {
     );
 
 
-    // RENDERER
-    renderer = new THREE.WebGLRenderer({
-        antialias: true
-    });
+    renderer =
+        new THREE.WebGLRenderer({
+            antialias: true
+        });
 
     renderer.setPixelRatio(
-        Math.min(window.devicePixelRatio || 1, 2)
+        Math.min(window.devicePixelRatio, 2)
     );
 
     renderer.setSize(
@@ -102,25 +103,25 @@ function init() {
 
     renderer.shadowMap.enabled = true;
 
-    renderer.domElement.style.position = "fixed";
+    renderer.shadowMap.type =
+        THREE.PCFSoftShadowMap;
+
+    renderer.domElement.style.position =
+        "fixed";
+
     renderer.domElement.style.left = "0";
     renderer.domElement.style.top = "0";
-    renderer.domElement.style.width = "100%";
-    renderer.domElement.style.height = "100%";
     renderer.domElement.style.zIndex = "0";
-    renderer.domElement.style.display = "block";
-    renderer.domElement.style.touchAction = "none";
 
     document.body.appendChild(
         renderer.domElement
     );
 
 
-    // LIGHTING
     const ambient =
         new THREE.AmbientLight(
             0xffffff,
-            0.75
+            0.72
         );
 
     scene.add(ambient);
@@ -129,7 +130,7 @@ function init() {
     const sun =
         new THREE.DirectionalLight(
             0xffffff,
-            1.3
+            1.2
         );
 
     sun.position.set(
@@ -143,42 +144,39 @@ function init() {
     scene.add(sun);
 
 
-    createWorld();
+    createLandWorld();
     createRunner();
     createPolice();
-    createBoat();
 
     setupButtons();
     setupControls();
+
+    updateHighScoreDisplay();
 
     window.addEventListener(
         "resize",
         resizeGame
     );
 
-
-    updateHUD();
-
     animate();
 }
 
 
 // ============================================================
-// WORLD
+// LAND WORLD
 // ============================================================
 
-function createWorld() {
+function createLandWorld() {
 
-    // ROAD
     const road =
         new THREE.Mesh(
             new THREE.PlaneGeometry(
-                22,
+                24,
                 3000
             ),
             new THREE.MeshStandardMaterial({
-                color: 0x292d32,
-                roughness: 0.85
+                color: 0x30343a,
+                roughness: 0.9
             })
         );
 
@@ -188,20 +186,26 @@ function createWorld() {
     road.position.z =
         -1500;
 
+    road.receiveShadow = true;
+
     scene.add(road);
 
-    scenery.push(road);
+    worldObjects.push(road);
 
 
-    // ROAD MARKINGS
+    // Lane markings
+
     for (
-        let x of [-laneWidth / 2, laneWidth / 2]
+        let x of [
+            -laneWidth / 2,
+            laneWidth / 2
+        ]
     ) {
 
         const line =
             new THREE.Mesh(
                 new THREE.BoxGeometry(
-                    0.10,
+                    0.12,
                     0.04,
                     3000
                 ),
@@ -218,11 +222,12 @@ function createWorld() {
 
         scene.add(line);
 
-        scenery.push(line);
+        worldObjects.push(line);
     }
 
 
-    // RAILS
+    // Rails
+
     for (
         let x of [-5.2, 5.2]
     ) {
@@ -230,29 +235,30 @@ function createWorld() {
         const rail =
             new THREE.Mesh(
                 new THREE.BoxGeometry(
-                    0.20,
+                    0.2,
                     0.18,
                     3000
                 ),
                 new THREE.MeshStandardMaterial({
-                    color: 0xbfc5ca,
+                    color: 0xb8bec4,
                     metalness: 0.8
                 })
             );
 
         rail.position.set(
             x,
-            0.10,
+            0.1,
             -1500
         );
 
         scene.add(rail);
 
-        scenery.push(rail);
+        worldObjects.push(rail);
     }
 
 
-    // SLEEPERS
+    // Sleepers
+
     for (
         let z = 0;
         z > -1500;
@@ -267,7 +273,7 @@ function createWorld() {
                     0.45
                 ),
                 new THREE.MeshStandardMaterial({
-                    color: 0x554338
+                    color: 0x4d4038
                 })
             );
 
@@ -279,43 +285,47 @@ function createWorld() {
 
         scene.add(sleeper);
 
-        scenery.push(sleeper);
+        worldObjects.push(sleeper);
     }
 
 
-    // BUILDINGS
+    // Buildings
+
     for (
         let z = 0;
         z > -1500;
         z -= 45
     ) {
 
-        createBuilding(-13, z);
-        createBuilding(13, z);
+        createBuilding(
+            -14,
+            z
+        );
+
+        createBuilding(
+            14,
+            z
+        );
     }
 
 
-    // STREET LIGHTS
+    // Street lights
+
     for (
         let z = -10;
         z > -1500;
         z -= 55
     ) {
 
-        createStreetLight(-8, z);
-        createStreetLight(8, z);
-    }
+        createStreetLight(
+            -8,
+            z
+        );
 
-
-    // TREES
-    for (
-        let z = -20;
-        z > -1500;
-        z -= 38
-    ) {
-
-        createTree(-10, z);
-        createTree(10, z);
+        createStreetLight(
+            8,
+            z
+        );
     }
 }
 
@@ -324,15 +334,23 @@ function createWorld() {
 // BUILDINGS
 // ============================================================
 
-function createBuilding(x, z) {
+function createBuilding(
+    x,
+    z
+) {
 
     const height =
-        7 + Math.random() * 10;
+        7 +
+        Math.random() * 10;
+
+    const width =
+        4 +
+        Math.random() * 3;
 
     const building =
         new THREE.Mesh(
             new THREE.BoxGeometry(
-                4 + Math.random() * 3,
+                width,
                 height,
                 12
             ),
@@ -340,7 +358,8 @@ function createBuilding(x, z) {
                 color:
                     0x555b63 +
                     Math.floor(
-                        Math.random() * 0x181818
+                        Math.random() *
+                        0x202020
                     )
             })
         );
@@ -355,15 +374,56 @@ function createBuilding(x, z) {
 
     scene.add(building);
 
-    scenery.push(building);
+    worldObjects.push(building);
+
+
+    // Windows
+
+    for (
+        let y = 2;
+        y < height - 1;
+        y += 2.2
+    ) {
+
+        const windowMesh =
+            new THREE.Mesh(
+                new THREE.BoxGeometry(
+                    0.7,
+                    0.8,
+                    0.05
+                ),
+                new THREE.MeshStandardMaterial({
+                    color: 0x9fd8e8,
+                    emissive: 0x1a4450,
+                    emissiveIntensity: 0.3
+                })
+            );
+
+        windowMesh.position.set(
+            x - width / 2 - 0.03,
+            y,
+            z
+        );
+
+        scene.add(
+            windowMesh
+        );
+
+        worldObjects.push(
+            windowMesh
+        );
+    }
 }
 
 
 // ============================================================
-// STREET LIGHT
+// STREET LIGHTS
 // ============================================================
 
-function createStreetLight(x, z) {
+function createStreetLight(
+    x,
+    z
+) {
 
     const pole =
         new THREE.Mesh(
@@ -385,7 +445,7 @@ function createStreetLight(x, z) {
 
     scene.add(pole);
 
-    scenery.push(pole);
+    worldObjects.push(pole);
 
 
     const lamp =
@@ -396,9 +456,9 @@ function createStreetLight(x, z) {
                 12
             ),
             new THREE.MeshStandardMaterial({
-                color: 0xfff2aa,
-                emissive: 0xffcc55,
-                emissiveIntensity: 1
+                color: 0xffeeaa,
+                emissive: 0xffb52e,
+                emissiveIntensity: 0.8
             })
         );
 
@@ -410,63 +470,7 @@ function createStreetLight(x, z) {
 
     scene.add(lamp);
 
-    scenery.push(lamp);
-}
-
-
-// ============================================================
-// TREES
-// ============================================================
-
-function createTree(x, z) {
-
-    const group =
-        new THREE.Group();
-
-
-    const trunk =
-        new THREE.Mesh(
-            new THREE.CylinderGeometry(
-                0.22,
-                0.30,
-                2
-            ),
-            new THREE.MeshStandardMaterial({
-                color: 0x704214
-            })
-        );
-
-    trunk.position.y = 1;
-
-    group.add(trunk);
-
-
-    const leaves =
-        new THREE.Mesh(
-            new THREE.SphereGeometry(
-                1.25,
-                12,
-                12
-            ),
-            new THREE.MeshStandardMaterial({
-                color: 0x258a3d
-            })
-        );
-
-    leaves.position.y = 2.6;
-
-    group.add(leaves);
-
-
-    group.position.set(
-        x,
-        0,
-        z
-    );
-
-    scene.add(group);
-
-    scenery.push(group);
+    worldObjects.push(lamp);
 }
 
 
@@ -492,7 +496,8 @@ function createRunner() {
             })
         );
 
-    body.position.y = 1.35;
+    body.position.y =
+        1.35;
 
     player.add(body);
 
@@ -509,7 +514,8 @@ function createRunner() {
             })
         );
 
-    head.position.y = 2.25;
+    head.position.y =
+        2.25;
 
     player.add(head);
 
@@ -526,9 +532,11 @@ function createRunner() {
             })
         );
 
-    hair.scale.y = 0.55;
+    hair.scale.y =
+        0.55;
 
-    hair.position.y = 2.48;
+    hair.position.y =
+        2.48;
 
     player.add(hair);
 
@@ -611,26 +619,18 @@ function createRunner() {
 }
 
 
-// ============================================================
-// LIMB
-// ============================================================
-
 function createLimb(
     radius,
     height,
     color
 ) {
 
-    // CapsuleGeometry isn't available
-    // in some older Three.js builds.
-    // Use a cylinder for maximum stability.
-
     return new THREE.Mesh(
-        new THREE.CylinderGeometry(
-            radius,
+        new THREE.CapsuleGeometry(
             radius,
             height,
-            10
+            6,
+            12
         ),
         new THREE.MeshStandardMaterial({
             color: color
@@ -661,7 +661,8 @@ function createPolice() {
             })
         );
 
-    body.position.y = 1;
+    body.position.y =
+        1;
 
     police.add(body);
 
@@ -678,7 +679,8 @@ function createPolice() {
             })
         );
 
-    head.position.y = 2;
+    head.position.y =
+        2;
 
     police.add(head);
 
@@ -699,40 +701,38 @@ function createPolice() {
 
 function setupButtons() {
 
-    const playButton =
+    const play =
         document.getElementById(
             "play-btn"
         );
 
-    const retryButton =
+    const retry =
         document.getElementById(
             "retry-btn"
         );
 
 
-    // PLAY
-    if (playButton) {
+    if (play) {
 
-        playButton.addEventListener(
+        play.addEventListener(
             "click",
             function(e) {
 
                 e.preventDefault();
-                e.stopPropagation();
 
                 startGame();
+
             }
         );
 
-
-        playButton.addEventListener(
+        play.addEventListener(
             "touchend",
             function(e) {
 
                 e.preventDefault();
-                e.stopPropagation();
 
                 startGame();
+
             },
             {
                 passive: false
@@ -741,29 +741,27 @@ function setupButtons() {
     }
 
 
-    // RETRY
-    if (retryButton) {
+    if (retry) {
 
-        retryButton.addEventListener(
+        retry.addEventListener(
             "click",
             function(e) {
 
                 e.preventDefault();
-                e.stopPropagation();
 
                 startGame();
+
             }
         );
 
-
-        retryButton.addEventListener(
+        retry.addEventListener(
             "touchend",
             function(e) {
 
                 e.preventDefault();
-                e.stopPropagation();
 
                 startGame();
+
             },
             {
                 passive: false
@@ -776,7 +774,6 @@ function setupButtons() {
         "🚗 CAR",
         enterCar
     );
-
 
     createGameButton(
         "⚽ KICK",
@@ -842,7 +839,7 @@ function createGameButton(
             "button"
         );
 
-    button.innerText =
+    button.textContent =
         text;
 
     button.style.padding =
@@ -855,7 +852,7 @@ function createGameButton(
         "16px";
 
     button.style.background =
-        "rgba(10,10,10,0.9)";
+        "rgba(10,10,10,.9)";
 
     button.style.color =
         "white";
@@ -877,6 +874,7 @@ function createGameButton(
             e.preventDefault();
 
             action();
+
         }
     );
 
@@ -895,13 +893,6 @@ function startGame() {
 
     initAudio();
 
-
-    if (!renderer) {
-
-        init();
-    }
-
-
     gameActive = true;
     gameOverState = false;
 
@@ -913,20 +904,20 @@ function startGame() {
     currentLane = 0;
 
     isJumping = false;
-
     yVelocity = 0;
 
-    carMode = false;
+    isBoatMode = false;
+    oceanTimer = 0;
 
-    gameMode = "land";
+    magnetActive = false;
+    magnetTimer = 0;
 
-    riverTimer = 0;
+    hoverboardActive = false;
+    hoverboardTimer = 0;
 
 
     clearObjects();
 
-
-    player.visible = true;
 
     player.position.set(
         0,
@@ -934,20 +925,22 @@ function startGame() {
         0
     );
 
+    player.visible = true;
+
 
     if (playerCar) {
 
-        playerCar.visible = false;
+        playerCar.visible =
+            false;
     }
 
 
     if (boat) {
 
-        boat.visible = false;
+        boat.visible =
+            false;
     }
 
-
-    police.visible = true;
 
     police.position.set(
         0,
@@ -965,9 +958,1222 @@ function startGame() {
     );
 
 
+    setLandEnvironment();
+
     spawnObjects();
 
     updateHUD();
+}
+
+
+// ============================================================
+// LAND ENVIRONMENT
+// ============================================================
+
+function setLandEnvironment() {
+
+    isBoatMode = false;
+
+    scene.background =
+        new THREE.Color(
+            0x72c7e8
+        );
+
+    scene.fog =
+        new THREE.Fog(
+            0x72c7e8,
+            30,
+            190
+        );
+
+    if (player) {
+        player.visible = true;
+    }
+
+    if (boat) {
+        boat.visible = false;
+    }
+}
+
+
+// ============================================================
+// OCEAN ENVIRONMENT
+// ============================================================
+
+function enterOceanMode() {
+
+    if (isBoatMode) return;
+
+    isBoatMode = true;
+
+    oceanTimer = 0;
+
+    clearObjects();
+
+    createOceanWorld();
+
+    createBoat();
+
+    player.visible = false;
+
+    boat.visible = true;
+
+    boat.position.set(
+        0,
+        0.7,
+        0
+    );
+
+    scene.background =
+        new THREE.Color(
+            0x4e9ed8
+        );
+
+    scene.fog =
+        new THREE.Fog(
+            0x4e9ed8,
+            35,
+            180
+        );
+
+    playOceanSound();
+}
+
+
+// ============================================================
+// OCEAN WORLD
+// ============================================================
+
+function createOceanWorld() {
+
+    const water =
+        new THREE.Mesh(
+            new THREE.PlaneGeometry(
+                1000,
+                3000
+            ),
+            new THREE.MeshStandardMaterial({
+                color: 0x168bd0,
+                roughness: 0.25,
+                metalness: 0.1
+            })
+        );
+
+    water.rotation.x =
+        -Math.PI / 2;
+
+    water.position.y =
+        -0.1;
+
+    water.position.z =
+        -1500;
+
+    scene.add(water);
+
+    oceanObjects.push(water);
+
+
+    // Ocean waves
+
+    for (
+        let z = 0;
+        z > -1200;
+        z -= 18
+    ) {
+
+        const wave =
+            new THREE.Mesh(
+                new THREE.BoxGeometry(
+                    100,
+                    0.05,
+                    0.5
+                ),
+                new THREE.MeshStandardMaterial({
+                    color: 0x8ddcff,
+                    transparent: true,
+                    opacity: 0.45
+                })
+            );
+
+        wave.position.set(
+            0,
+            0.02,
+            z
+        );
+
+        scene.add(wave);
+
+        oceanObjects.push(
+            wave
+        );
+    }
+
+
+    // Small islands / shoreline scenery
+
+    for (
+        let z = -40;
+        z > -900;
+        z -= 90
+    ) {
+
+        const island =
+            new THREE.Mesh(
+                new THREE.CylinderGeometry(
+                    8,
+                    11,
+                    1,
+                    20
+                ),
+                new THREE.MeshStandardMaterial({
+                    color: 0x4f8b45
+                })
+            );
+
+        island.position.set(
+            Math.random() > 0.5
+                ? -22
+                : 22,
+            0.3,
+            z
+        );
+
+        scene.add(island);
+
+        oceanObjects.push(
+            island
+        );
+    }
+}
+
+
+// ============================================================
+// BOAT
+// ============================================================
+
+function createBoat() {
+
+    if (boat) {
+
+        boat.visible = true;
+
+        return;
+    }
+
+
+    boat =
+        new THREE.Group();
+
+
+    const hull =
+        new THREE.Mesh(
+            new THREE.BoxGeometry(
+                2.6,
+                0.6,
+                4.2
+            ),
+            new THREE.MeshStandardMaterial({
+                color: 0xff5722,
+                roughness: 0.35
+            })
+        );
+
+    hull.position.y =
+        0.5;
+
+    boat.add(hull);
+
+
+    const cabin =
+        new THREE.Mesh(
+            new THREE.BoxGeometry(
+                1.5,
+                0.8,
+                1.5
+            ),
+            new THREE.MeshStandardMaterial({
+                color: 0xffffff
+            })
+        );
+
+    cabin.position.y =
+        1.15;
+
+    cabin.position.z =
+        -0.3;
+
+    boat.add(cabin);
+
+
+    const windshield =
+        new THREE.Mesh(
+            new THREE.BoxGeometry(
+                1.1,
+                0.45,
+                0.08
+            ),
+            new THREE.MeshStandardMaterial({
+                color: 0x24485a,
+                transparent: true,
+                opacity: 0.8
+            })
+        );
+
+    windshield.position.set(
+        0,
+        1.3,
+        -1.05
+    );
+
+    boat.add(windshield);
+
+
+    scene.add(boat);
+
+    boat.visible = false;
+}
+
+
+// ============================================================
+// SPAWN OBJECTS
+// ============================================================
+
+function spawnObjects() {
+
+    if (!gameActive) return;
+
+    if (isBoatMode) {
+
+        spawnOceanObjects();
+
+        return;
+    }
+
+
+    const lanes = [
+        -laneWidth,
+        0,
+        laneWidth
+    ];
+
+    const lane =
+        lanes[
+            Math.floor(
+                Math.random() *
+                lanes.length
+            )
+        ];
+
+
+    const r =
+        Math.random();
+
+
+    if (r < 0.22) {
+
+        createTrain(lane);
+
+    } else if (r < 0.40) {
+
+        createTrafficCar(lane);
+
+    } else if (r < 0.56) {
+
+        createBike(lane);
+
+    } else if (r < 0.68) {
+
+        createBarrier(lane);
+
+    } else if (r < 0.82) {
+
+        createCoinLine(lane);
+
+    } else {
+
+        createPowerUp(lane);
+    }
+
+
+    spawnTimer =
+        setTimeout(
+            spawnObjects,
+            Math.max(
+                600,
+                1050 -
+                speed * 400
+            )
+        );
+}
+
+
+// ============================================================
+// MOVING TRAIN
+// ============================================================
+
+function createTrain(lane) {
+
+    const train =
+        new THREE.Group();
+
+
+    const body =
+        new THREE.Mesh(
+            new THREE.BoxGeometry(
+                2.8,
+                3.5,
+                10
+            ),
+            new THREE.MeshStandardMaterial({
+                color: 0x66727d,
+                metalness: 0.55
+            })
+        );
+
+    body.position.y =
+        1.75;
+
+    train.add(body);
+
+
+    // Headlights
+
+    for (
+        let x of [-0.8, 0.8]
+    ) {
+
+        const light =
+            new THREE.Mesh(
+                new THREE.SphereGeometry(
+                    0.16,
+                    12,
+                    12
+                ),
+                new THREE.MeshStandardMaterial({
+                    color: 0xffffcc,
+                    emissive: 0xffff66,
+                    emissiveIntensity: 2
+                })
+            );
+
+        light.position.set(
+            x,
+            1.25,
+            5.05
+        );
+
+        train.add(light);
+    }
+
+
+    train.position.set(
+        lane,
+        0,
+        -160
+    );
+
+    scene.add(train);
+
+    obstacles.push(train);
+
+    playTrainSound();
+}
+
+
+// ============================================================
+// CAR
+// ============================================================
+
+function createTrafficCar(lane) {
+
+    const car =
+        new THREE.Group();
+
+
+    const body =
+        new THREE.Mesh(
+            new THREE.BoxGeometry(
+                2,
+                0.75,
+                4
+            ),
+            new THREE.MeshStandardMaterial({
+                color:
+                    Math.random() >
+                    0.5
+                    ? 0xe53935
+                    : 0xff6d00
+            })
+        );
+
+    body.position.y =
+        0.65;
+
+    car.add(body);
+
+
+    const roof =
+        new THREE.Mesh(
+            new THREE.BoxGeometry(
+                1.35,
+                0.55,
+                1.7
+            ),
+            new THREE.MeshStandardMaterial({
+                color: 0x202124
+            })
+        );
+
+    roof.position.y =
+        1.15;
+
+    car.add(roof);
+
+
+    // headlights
+
+    for (
+        let x of [-0.6, 0.6]
+    ) {
+
+        const light =
+            new THREE.Mesh(
+                new THREE.SphereGeometry(
+                    0.12,
+                    10,
+                    10
+                ),
+                new THREE.MeshStandardMaterial({
+                    color: 0xffffaa,
+                    emissive: 0xffff55,
+                    emissiveIntensity: 1.5
+                })
+            );
+
+        light.position.set(
+            x,
+            0.75,
+            2.05
+        );
+
+        car.add(light);
+    }
+
+
+    car.position.set(
+        lane,
+        0,
+        -145
+    );
+
+    scene.add(car);
+
+    obstacles.push(car);
+}
+
+
+// ============================================================
+// BIKE
+// ============================================================
+
+function createBike(lane) {
+
+    const bike =
+        new THREE.Group();
+
+
+    const frame =
+        new THREE.Mesh(
+            new THREE.BoxGeometry(
+                0.35,
+                0.7,
+                1.8
+            ),
+            new THREE.MeshStandardMaterial({
+                color: 0x111111,
+                metalness: 0.5
+            })
+        );
+
+    frame.position.y =
+        0.75;
+
+    bike.add(frame);
+
+
+    for (
+        let z of [-0.7, 0.7]
+    ) {
+
+        const wheel =
+            new THREE.Mesh(
+                new THREE.TorusGeometry(
+                    0.38,
+                    0.08,
+                    10,
+                    20
+                ),
+                new THREE.MeshStandardMaterial({
+                    color: 0x151515
+                })
+            );
+
+        wheel.rotation.y =
+            Math.PI / 2;
+
+        wheel.position.set(
+            0,
+            0.42,
+            z
+        );
+
+        bike.add(wheel);
+    }
+
+
+    const rider =
+        new THREE.Mesh(
+            new THREE.SphereGeometry(
+                0.3,
+                12,
+                12
+            ),
+            new THREE.MeshStandardMaterial({
+                color: 0x224488
+            })
+        );
+
+    rider.position.y =
+        1.4;
+
+    bike.add(rider);
+
+
+    bike.position.set(
+        lane,
+        0,
+        -135
+    );
+
+    scene.add(bike);
+
+    obstacles.push(bike);
+}
+
+
+// ============================================================
+// BARRIER
+// ============================================================
+
+function createBarrier(lane) {
+
+    const barrier =
+        new THREE.Mesh(
+            new THREE.BoxGeometry(
+                2.5,
+                1.2,
+                1.5
+            ),
+            new THREE.MeshStandardMaterial({
+                color: 0xffc107
+            })
+        );
+
+    barrier.position.set(
+        lane,
+        0.6,
+        -130
+    );
+
+    scene.add(barrier);
+
+    obstacles.push(barrier);
+}
+
+
+// ============================================================
+// COINS
+// ============================================================
+
+function createCoinLine(lane) {
+
+    for (
+        let i = 0;
+        i < 7;
+        i++
+    ) {
+
+        const coin =
+            new THREE.Mesh(
+                new THREE.TorusGeometry(
+                    0.38,
+                    0.12,
+                    12,
+                    24
+                ),
+                new THREE.MeshStandardMaterial({
+                    color: 0xffd700,
+                    emissive: 0x8a6500,
+                    emissiveIntensity: 0.6,
+                    metalness: 1,
+                    roughness: 0.2
+                })
+            );
+
+
+        coin.position.set(
+            lane,
+            1.25,
+            -105 -
+            i * 5
+        );
+
+
+        scene.add(coin);
+
+        coins.push(coin);
+    }
+}
+
+
+// ============================================================
+// POWER UPS
+// ============================================================
+
+function createPowerUp(lane) {
+
+    const types = [
+        "magnet",
+        "hoverboard",
+        "revival"
+    ];
+
+    const type =
+        types[
+            Math.floor(
+                Math.random() *
+                types.length
+            )
+        ];
+
+
+    let color =
+        type === "magnet"
+            ? 0xff2222
+            : type === "hoverboard"
+                ? 0x22aaff
+                : 0xffd700;
+
+
+    const group =
+        new THREE.Group();
+
+
+    const body =
+        new THREE.Mesh(
+            new THREE.SphereGeometry(
+                0.55,
+                16,
+                16
+            ),
+            new THREE.MeshStandardMaterial({
+                color: color,
+                emissive: color,
+                emissiveIntensity: 0.5
+            })
+        );
+
+
+    group.add(body);
+
+
+    const label =
+        document.createElement(
+            "div"
+        );
+
+
+    group.userData.type =
+        type;
+
+
+    group.position.set(
+        lane,
+        1.3,
+        -115
+    );
+
+
+    scene.add(group);
+
+    powerUps.push(group);
+}
+
+
+// ============================================================
+// OCEAN OBSTACLES
+// ============================================================
+
+function spawnOceanObjects() {
+
+    const r =
+        Math.random();
+
+
+    if (r < 0.35) {
+
+        createBuoy();
+
+    } else if (r < 0.65) {
+
+        createOceanBoat();
+
+    } else {
+
+        createOceanCoins();
+    }
+
+
+    spawnTimer =
+        setTimeout(
+            spawnObjects,
+            850
+        );
+}
+
+
+function createBuoy() {
+
+    const buoy =
+        new THREE.Mesh(
+            new THREE.CylinderGeometry(
+                0.5,
+                0.7,
+                1.5,
+                16
+            ),
+            new THREE.MeshStandardMaterial({
+                color: 0xff5722
+            })
+        );
+
+    buoy.position.set(
+        (
+            Math.floor(
+                Math.random() * 3
+            ) - 1
+        ) * laneWidth,
+        0.8,
+        -130
+    );
+
+    scene.add(buoy);
+
+    obstacles.push(buoy);
+}
+
+
+function createOceanBoat() {
+
+    const otherBoat =
+        new THREE.Group();
+
+
+    const hull =
+        new THREE.Mesh(
+            new THREE.BoxGeometry(
+                2.6,
+                0.6,
+                4
+            ),
+            new THREE.MeshStandardMaterial({
+                color: 0xffffff
+            })
+        );
+
+    hull.position.y =
+        0.5;
+
+    otherBoat.add(hull);
+
+
+    otherBoat.position.set(
+        (
+            Math.floor(
+                Math.random() * 3
+            ) - 1
+        ) * laneWidth,
+        0,
+        -150
+    );
+
+    scene.add(
+        otherBoat
+    );
+
+    obstacles.push(
+        otherBoat
+    );
+}
+
+
+function createOceanCoins() {
+
+    const lane =
+        (
+            Math.floor(
+                Math.random() * 3
+            ) - 1
+        ) * laneWidth;
+
+    for (
+        let i = 0;
+        i < 5;
+        i++
+    ) {
+
+        const coin =
+            new THREE.Mesh(
+                new THREE.TorusGeometry(
+                    0.38,
+                    0.12,
+                    12,
+                    24
+                ),
+                new THREE.MeshStandardMaterial({
+                    color: 0xffd700,
+                    metalness: 1
+                })
+            );
+
+        coin.position.set(
+            lane,
+            1,
+            -100 -
+            i * 5
+        );
+
+        scene.add(coin);
+
+        coins.push(coin);
+    }
+}
+
+
+// ============================================================
+// UPDATE OBJECTS
+// ============================================================
+
+function updateObjects() {
+
+    if (!gameActive) return;
+
+
+    const moveSpeed =
+        speed *
+        (isBoatMode ? 1.25 : 1);
+
+
+    for (
+        let i = obstacles.length - 1;
+        i >= 0;
+        i--
+    ) {
+
+        const obj =
+            obstacles[i];
+
+        obj.position.z +=
+            moveSpeed;
+
+
+        if (
+            checkCollision(
+                isBoatMode
+                    ? boat
+                    : player,
+                obj
+            )
+        ) {
+
+            handleCrash();
+
+            if (!gameActive)
+                return;
+        }
+
+
+        if (
+            obj.position.z > 15
+        ) {
+
+            scene.remove(obj);
+
+            obstacles.splice(
+                i,
+                1
+            );
+        }
+    }
+
+
+    // Coins
+
+    for (
+        let i = coins.length - 1;
+        i >= 0;
+        i--
+    ) {
+
+        const coin =
+            coins[i];
+
+        coin.position.z +=
+            moveSpeed;
+
+        coin.rotation.y +=
+            0.1;
+
+
+        const target =
+            isBoatMode
+                ? boat
+                : player;
+
+
+        if (
+            magnetActive
+        ) {
+
+            const distance =
+                target.position.distanceTo(
+                    coin.position
+                );
+
+            if (
+                distance < 8
+            ) {
+
+                coin.position.lerp(
+                    target.position,
+                    0.08
+                );
+            }
+        }
+
+
+        if (
+            target.position.distanceTo(
+                coin.position
+            ) < 1.5
+        ) {
+
+            collectCoin(i);
+
+            continue;
+        }
+
+
+        if (
+            coin.position.z > 15
+        ) {
+
+            scene.remove(
+                coin
+            );
+
+            coins.splice(
+                i,
+                1
+            );
+        }
+    }
+
+
+    // Power-ups
+
+    for (
+        let i = powerUps.length - 1;
+        i >= 0;
+        i--
+    ) {
+
+        const item =
+            powerUps[i];
+
+        item.position.z +=
+            moveSpeed;
+
+        item.rotation.y +=
+            0.04;
+
+
+        const target =
+            isBoatMode
+                ? boat
+                : player;
+
+
+        if (
+            target.position.distanceTo(
+                item.position
+            ) < 1.5
+        ) {
+
+            activatePowerUp(
+                item.userData.type
+            );
+
+            scene.remove(
+                item
+            );
+
+            powerUps.splice(
+                i,
+                1
+            );
+
+            continue;
+        }
+
+
+        if (
+            item.position.z > 15
+        ) {
+
+            scene.remove(
+                item
+            );
+
+            powerUps.splice(
+                i,
+                1
+            );
+        }
+    }
+
+
+    if (
+        speed < maxSpeed
+    ) {
+
+        speed +=
+            0.000035;
+    }
+
+
+    score += 1;
+
+    updateHUD();
+
+
+    // Ocean transition
+
+    if (
+        !isBoatMode &&
+        score >= oceanScoreStart
+    ) {
+
+        enterOceanMode();
+
+    }
+
+
+    if (
+        isBoatMode
+    ) {
+
+        oceanTimer++;
+
+
+        if (
+            oceanTimer >=
+            oceanDuration
+        ) {
+
+            returnToLand();
+        }
+    }
+}
+
+
+// ============================================================
+// COLLISION
+// ============================================================
+
+function checkCollision(
+    a,
+    b
+) {
+
+    if (!a || !b)
+        return false;
+
+
+    const x =
+        Math.abs(
+            a.position.x -
+            b.position.x
+        );
+
+    const z =
+        Math.abs(
+            a.position.z -
+            b.position.z
+        );
+
+    const y =
+        Math.abs(
+            a.position.y -
+            b.position.y
+        );
+
+
+    return (
+        x < 1.35 &&
+        z < 2.3 &&
+        y < 2.5
+    );
+}
+
+
+// ============================================================
+// CRASH / REVIVAL
+// ============================================================
+
+function handleCrash() {
+
+    if (hoverboardActive) {
+
+        hoverboardActive =
+            false;
+
+        playHitSound();
+
+        return;
+    }
+
+
+    if (
+        revivalKeys > 0
+    ) {
+
+        revivalKeys--;
+
+        localStorage.setItem(
+            "kollinsRevivalKeys",
+            revivalKeys
+        );
+
+        playRevivalSound();
+
+        updateHUD();
+
+        return;
+    }
+
+
+    gameOver();
 }
 
 
@@ -980,22 +2186,9 @@ function gameOver() {
     if (!gameActive)
         return;
 
-
     gameActive = false;
 
     gameOverState = true;
-
-
-    if (score > highScore) {
-
-        highScore = score;
-
-        localStorage.setItem(
-            "kollinsHighScore",
-            highScore
-        );
-    }
-
 
     if (spawnTimer) {
 
@@ -1007,7 +2200,21 @@ function gameOver() {
     }
 
 
-    playGameOverSound();
+    stopCarSound();
+
+
+    if (
+        score > highScore
+    ) {
+
+        highScore =
+            score;
+
+        localStorage.setItem(
+            "kollinsHighScore",
+            highScore
+        );
+    }
 
 
     const screen =
@@ -1044,853 +2251,138 @@ function gameOver() {
 
 
 // ============================================================
-// CLEAR OBJECTS
+// RETURN TO LAND
 // ============================================================
 
-function clearObjects() {
+function returnToLand() {
 
-    obstacles.forEach(
-        obj => scene.remove(obj)
+    isBoatMode = false;
+
+    oceanTimer = 0;
+
+    oceanObjects.forEach(
+        obj =>
+            scene.remove(obj)
     );
 
-    coins.forEach(
-        obj => scene.remove(obj)
-    );
+    oceanObjects = [];
 
 
-    obstacles = [];
-    coins = [];
+    if (boat) {
 
-
-    if (spawnTimer) {
-
-        clearTimeout(
-            spawnTimer
-        );
-
-        spawnTimer = null;
+        boat.visible =
+            false;
     }
 
 
-    if (football) {
+    player.visible =
+        true;
 
-        scene.remove(
-            football
-        );
 
-        football = null;
-    }
+    setLandEnvironment();
+
+    playLandReturnSound();
+
+    spawnObjects();
 }
 
 
 // ============================================================
-// SPAWN SYSTEM
+// POWER-UP ACTIVATION
 // ============================================================
 
-function spawnObjects() {
-
-    if (!gameActive)
-        return;
-
-
-    const lanes = [
-        -laneWidth,
-        0,
-        laneWidth
-    ];
-
-
-    const lane =
-        lanes[
-            Math.floor(
-                Math.random() *
-                lanes.length
-            )
-        ];
-
-
-    const random =
-        Math.random();
-
-
-    if (random < 0.18) {
-
-        createTrain(lane);
-
-    } else if (random < 0.36) {
-
-        createTrafficCar(lane);
-
-    } else if (random < 0.52) {
-
-        createBike(lane);
-
-    } else if (random < 0.65) {
-
-        createMotorcycle(lane);
-
-    } else if (random < 0.77) {
-
-        createBarrier(lane);
-
-    } else {
-
-        createCoinLine(lane);
-    }
-
-
-    spawnTimer =
-        setTimeout(
-            spawnObjects,
-            Math.max(
-                600,
-                1050 -
-                speed * 420
-            )
-        );
-}
-
-
-// ============================================================
-// TRAIN
-// ============================================================
-
-function createTrain(lane) {
-
-    const train =
-        new THREE.Group();
-
-
-    const body =
-        new THREE.Mesh(
-            new THREE.BoxGeometry(
-                2.8,
-                3.5,
-                10
-            ),
-            new THREE.MeshStandardMaterial({
-                color: 0x59636e,
-                metalness: 0.55
-            })
-        );
-
-    body.position.y =
-        1.75;
-
-    train.add(body);
-
-
-    // FRONT LIGHT
-    const lightMaterial =
-        new THREE.MeshStandardMaterial({
-            color: 0xffffaa,
-            emissive: 0xffff00,
-            emissiveIntensity: 2
-        });
-
-
-    const light1 =
-        new THREE.Mesh(
-            new THREE.SphereGeometry(
-                0.16,
-                10,
-                10
-            ),
-            lightMaterial
-        );
-
-
-    const light2 =
-        light1.clone();
-
-
-    light1.position.set(
-        -0.75,
-        1.6,
-        5.05
-    );
-
-    light2.position.set(
-        0.75,
-        1.6,
-        5.05
-    );
-
-
-    train.add(light1);
-    train.add(light2);
-
-
-    train.position.set(
-        lane,
-        0,
-        -150
-    );
-
-
-    train.userData.type =
-        "train";
-
-
-    scene.add(train);
-
-    obstacles.push(train);
-}
-
-
-// ============================================================
-// CAR OBSTACLE
-// ============================================================
-
-function createTrafficCar(lane) {
-
-    const group =
-        new THREE.Group();
-
-
-    const color =
-        Math.random() > 0.5
-        ? 0xe53935
-        : 0xff6d00;
-
-
-    const body =
-        new THREE.Mesh(
-            new THREE.BoxGeometry(
-                2,
-                0.75,
-                4
-            ),
-            new THREE.MeshStandardMaterial({
-                color: color
-            })
-        );
-
-
-    body.position.y =
-        0.65;
-
-    group.add(body);
-
-
-    const roof =
-        new THREE.Mesh(
-            new THREE.BoxGeometry(
-                1.35,
-                0.55,
-                1.7
-            ),
-            new THREE.MeshStandardMaterial({
-                color: 0x202124
-            })
-        );
-
-
-    roof.position.y =
-        1.15;
-
-    group.add(roof);
-
-
-    addVehicleLights(
-        group,
-        2
-    );
-
-
-    group.position.set(
-        lane,
-        0,
-        -140
-    );
-
-
-    group.userData.type =
-        "car";
-
-
-    scene.add(group);
-
-    obstacles.push(group);
-}
-
-
-// ============================================================
-// BIKE
-// ============================================================
-
-function createBike(lane) {
-
-    const bike =
-        new THREE.Group();
-
-
-    const wheelMaterial =
-        new THREE.MeshStandardMaterial({
-            color: 0x111111
-        });
-
-
-    const wheel1 =
-        new THREE.Mesh(
-            new THREE.TorusGeometry(
-                0.42,
-                0.10,
-                10,
-                20
-            ),
-            wheelMaterial
-        );
-
-
-    const wheel2 =
-        wheel1.clone();
-
-
-    wheel1.position.z =
-        -0.65;
-
-    wheel2.position.z =
-        0.65;
-
-
-    bike.add(wheel1);
-    bike.add(wheel2);
-
-
-    const frame =
-        new THREE.Mesh(
-            new THREE.BoxGeometry(
-                0.15,
-                0.65,
-                1.5
-            ),
-            new THREE.MeshStandardMaterial({
-                color: 0x2196f3
-            })
-        );
-
-
-    frame.position.y =
-        0.45;
-
-    bike.add(frame);
-
-
-    const rider =
-        new THREE.Mesh(
-            new THREE.BoxGeometry(
-                0.45,
-                0.9,
-                0.35
-            ),
-            new THREE.MeshStandardMaterial({
-                color: 0x333333
-            })
-        );
-
-
-    rider.position.y =
-        1.05;
-
-    bike.add(rider);
-
-
-    bike.position.set(
-        lane,
-        0,
-        -130
-    );
-
-
-    bike.userData.type =
-        "bike";
-
-
-    scene.add(bike);
-
-    obstacles.push(bike);
-}
-
-
-// ============================================================
-// MOTORCYCLE
-// ============================================================
-
-function createMotorcycle(lane) {
-
-    const motor =
-        new THREE.Group();
-
-
-    const body =
-        new THREE.Mesh(
-            new THREE.BoxGeometry(
-                0.75,
-                0.6,
-                1.8
-            ),
-            new THREE.MeshStandardMaterial({
-                color: 0x202020,
-                metalness: 0.6
-            })
-        );
-
-
-    body.position.y =
-        0.65;
-
-    motor.add(body);
-
-
-    const wheel1 =
-        new THREE.Mesh(
-            new THREE.TorusGeometry(
-                0.38,
-                0.09,
-                10,
-                18
-            ),
-            new THREE.MeshStandardMaterial({
-                color: 0x111111
-            })
-        );
-
-
-    const wheel2 =
-        wheel1.clone();
-
-
-    wheel1.position.z =
-        -0.7;
-
-    wheel2.position.z =
-        0.7;
-
-
-    motor.add(
-        wheel1,
-        wheel2
-    );
-
-
-    const lamp =
-        new THREE.Mesh(
-            new THREE.SphereGeometry(
-                0.13,
-                10,
-                10
-            ),
-            new THREE.MeshStandardMaterial({
-                color: 0xffffaa,
-                emissive: 0xffff00,
-                emissiveIntensity: 2
-            })
-        );
-
-
-    lamp.position.set(
-        0,
-        0.75,
-        0.95
-    );
-
-
-    motor.add(lamp);
-
-
-    motor.position.set(
-        lane,
-        0,
-        -125
-    );
-
-
-    motor.userData.type =
-        "motorcycle";
-
-
-    scene.add(motor);
-
-    obstacles.push(motor);
-}
-
-
-// ============================================================
-// VEHICLE LIGHTS
-// ============================================================
-
-function addVehicleLights(
-    vehicle,
-    z
-) {
-
-    const material =
-        new THREE.MeshStandardMaterial({
-            color: 0xffffaa,
-            emissive: 0xffff00,
-            emissiveIntensity: 1.8
-        });
-
-
-    const left =
-        new THREE.Mesh(
-            new THREE.SphereGeometry(
-                0.12,
-                10,
-                10
-            ),
-            material
-        );
-
-
-    const right =
-        left.clone();
-
-
-    left.position.set(
-        -0.65,
-        0.65,
-        z
-    );
-
-    right.position.set(
-        0.65,
-        0.65,
-        z
-    );
-
-
-    vehicle.add(
-        left,
-        right
-    );
-}
-
-
-// ============================================================
-// BARRIER
-// ============================================================
-
-function createBarrier(lane) {
-
-    const barrier =
-        new THREE.Mesh(
-            new THREE.BoxGeometry(
-                2.5,
-                1.2,
-                1.5
-            ),
-            new THREE.MeshStandardMaterial({
-                color: 0xffc107
-            })
-        );
-
-
-    barrier.position.set(
-        lane,
-        0.6,
-        -130
-    );
-
-
-    barrier.userData.type =
-        "barrier";
-
-
-    scene.add(barrier);
-
-    obstacles.push(barrier);
-}
-
-
-// ============================================================
-// COINS — YELLOW RINGS
-// ============================================================
-
-function createCoinLine(lane) {
-
-    for (
-        let i = 0;
-        i < 7;
-        i++
-    ) {
-
-        const coin =
-            new THREE.Mesh(
-                new THREE.TorusGeometry(
-                    0.38,
-                    0.12,
-                    12,
-                    24
-                ),
-                new THREE.MeshStandardMaterial({
-                    color: 0xffd700,
-                    emissive: 0x8a6500,
-                    emissiveIntensity: 0.8,
-                    metalness: 1,
-                    roughness: 0.2
-                })
-            );
-
-
-        coin.position.set(
-            lane,
-            1.25,
-            -105 -
-            i * 5
-        );
-
-
-        scene.add(coin);
-
-        coins.push(coin);
-    }
-}
-
-
-// ============================================================
-// UPDATE OBJECTS
-// ============================================================
-
-function updateObjects() {
-
-    if (!gameActive)
-        return;
-
-
-    // OBSTACLES
-    for (
-        let i = obstacles.length - 1;
-        i >= 0;
-        i--
-    ) {
-
-        const obj =
-            obstacles[i];
-
-
-        obj.position.z +=
-            speed;
-
-
-        // VEHICLE LIGHTS TURN ON WHEN CLOSE
-        if (
-            obj.userData.type === "train" ||
-            obj.userData.type === "car" ||
-            obj.userData.type === "motorcycle"
-        ) {
-
-            if (
-                obj.position.z > -55
-            ) {
-
-                obj.traverse(
-                    child => {
-
-                        if (
-                            child.material &&
-                            child.material.emissive
-                        ) {
-
-                            child.material
-                                .emissiveIntensity =
-                                3;
-                        }
-                    }
-                );
-            }
-        }
-
-
-        if (
-            checkCollision(
-                player,
-                obj
-            )
-        ) {
-
-            gameOver();
-
-            removeObstacle(i);
-
-            continue;
-        }
-
-
-        if (
-            obj.position.z > 15
-        ) {
-
-            removeObstacle(i);
-        }
-    }
-
-
-    // COINS
-    for (
-        let i = coins.length - 1;
-        i >= 0;
-        i--
-    ) {
-
-        const coin =
-            coins[i];
-
-
-        coin.position.z +=
-            speed;
-
-
-        coin.rotation.y +=
-            0.10;
-
-
-        if (
-            player.position.distanceTo(
-                coin.position
-            ) < 1.5
-        ) {
-
-            collectCoin(i);
-
-            continue;
-        }
-
-
-        if (
-            coin.position.z > 15
-        ) {
-
-            scene.remove(
-                coin
-            );
-
-            coins.splice(
-                i,
-                1
-            );
-        }
-    }
-
-
-    // SPEED
-    if (
-        speed < maxSpeed
-    ) {
-
-        speed +=
-            0.000035;
-    }
-
-
-    score += 1;
-
-
-    // RIVER AT 5000
-    if (
-        score >= 5000 &&
-        gameMode === "land"
-    ) {
-
-        enterRiver();
-    }
-
-
-    if (
-        gameMode === "river"
-    ) {
-
-        riverTimer += 1;
-
-        if (
-            riverTimer > 1000
-        ) {
-
-            returnToLand();
-        }
-    }
-
-
-    updateHUD();
-}
-
-
-// ============================================================
-// COLLISION
-// ============================================================
-
-function checkCollision(
-    a,
-    b
-) {
-
-    const x =
-        Math.abs(
-            a.position.x -
-            b.position.x
-        );
-
-
-    const z =
-        Math.abs(
-            a.position.z -
-            b.position.z
-        );
-
-
-    const y =
-        Math.abs(
-            a.position.y -
-            b.position.y
-        );
-
-
-    return (
-        x < 1.35 &&
-        z < 2.2 &&
-        y < 2.3
-    );
-}
-
-
-// ============================================================
-// REMOVE OBSTACLE
-// ============================================================
-
-function removeObstacle(
-    index
+function activatePowerUp(
+    type
 ) {
 
     if (
-        !obstacles[index]
-    )
-        return;
+        type === "magnet"
+    ) {
 
+        magnetActive =
+            true;
 
-    scene.remove(
-        obstacles[index]
-    );
+        magnetTimer =
+            600;
 
+        playPowerUpSound();
 
-    obstacles.splice(
-        index,
-        1
-    );
+    } else if (
+        type === "hoverboard"
+    ) {
+
+        hoverboardActive =
+            true;
+
+        hoverboardTimer =
+            700;
+
+        playPowerUpSound();
+
+    } else if (
+        type === "revival"
+    ) {
+
+        revivalKeys++;
+
+        localStorage.setItem(
+            "kollinsRevivalKeys",
+            revivalKeys
+        );
+
+        playRevivalSound();
+    }
 }
 
 
 // ============================================================
-// COLLECT COIN
+// POWER-UP TIMERS
+// ============================================================
+
+function updatePowerUps() {
+
+    if (
+        magnetActive
+    ) {
+
+        magnetTimer--;
+
+        if (
+            magnetTimer <= 0
+        ) {
+
+            magnetActive =
+                false;
+        }
+    }
+
+
+    if (
+        hoverboardActive
+    ) {
+
+        hoverboardTimer--;
+
+        if (
+            hoverboardTimer <= 0
+        ) {
+
+            hoverboardActive =
+                false;
+        }
+    }
+}
+
+
+// ============================================================
+// COIN
 // ============================================================
 
 function collectCoin(
     index
 ) {
 
-    if (
-        !coins[index]
-    )
+    if (!coins[index])
         return;
 
 
@@ -1902,7 +2394,6 @@ function collectCoin(
     scene.remove(
         coins[index]
     );
-
 
     coins.splice(
         index,
@@ -1926,7 +2417,9 @@ function updatePlayer() {
         return;
 
 
-    if (isJumping) {
+    if (
+        isJumping
+    ) {
 
         player.position.y +=
             yVelocity;
@@ -1939,11 +2432,14 @@ function updatePlayer() {
             player.position.y <= 0
         ) {
 
-            player.position.y = 0;
+            player.position.y =
+                0;
 
-            isJumping = false;
+            isJumping =
+                false;
 
-            yVelocity = 0;
+            yVelocity =
+                0;
         }
     }
 
@@ -1957,12 +2453,12 @@ function updatePlayer() {
         (
             targetX -
             player.position.x
-        ) * 0.18;
+        ) *
+        0.18;
 
 
     if (
-        gameActive &&
-        !carMode
+        gameActive
     ) {
 
         const t =
@@ -1970,31 +2466,61 @@ function updatePlayer() {
             0.012;
 
 
-        player.userData.leftLeg
-            .rotation.x =
+        player.userData.leftLeg.rotation.x =
             Math.sin(t) *
             0.65;
 
-
-        player.userData.rightLeg
-            .rotation.x =
+        player.userData.rightLeg.rotation.x =
             Math.sin(
                 t + Math.PI
-            ) * 0.65;
+            ) *
+            0.65;
 
-
-        player.userData.leftArm
-            .rotation.x =
+        player.userData.leftArm.rotation.x =
             Math.sin(
                 t + Math.PI
-            ) * 0.5;
+            ) *
+            0.5;
 
-
-        player.userData.rightArm
-            .rotation.x =
+        player.userData.rightArm.rotation.x =
             Math.sin(t) *
             0.5;
     }
+}
+
+
+// ============================================================
+// BOAT
+// ============================================================
+
+function updateBoat() {
+
+    if (
+        !isBoatMode ||
+        !boat
+    )
+        return;
+
+
+    const targetX =
+        currentLane *
+        laneWidth;
+
+
+    boat.position.x +=
+        (
+            targetX -
+            boat.position.x
+        ) *
+        0.12;
+
+
+    boat.rotation.z =
+        Math.sin(
+            performance.now() *
+            0.003
+        ) *
+        0.025;
 }
 
 
@@ -2004,7 +2530,10 @@ function updatePlayer() {
 
 function updatePolice() {
 
-    if (!gameActive)
+    if (
+        !gameActive ||
+        isBoatMode
+    )
         return;
 
 
@@ -2012,12 +2541,13 @@ function updatePolice() {
         (
             player.position.x -
             police.position.x
-        ) * 0.035;
+        ) *
+        0.035;
 }
 
 
 // ============================================================
-// PLAYER CAR
+// CAR
 // ============================================================
 
 function createPlayerCar() {
@@ -2039,10 +2569,8 @@ function createPlayerCar() {
             })
         );
 
-
     body.position.y =
         0.65;
-
 
     playerCar.add(body);
 
@@ -2059,57 +2587,20 @@ function createPlayerCar() {
             })
         );
 
-
     roof.position.y =
         1.25;
-
 
     playerCar.add(roof);
 
 
-    for (
-        let x of [-1, 1]
-    ) {
-
-        for (
-            let z of [-1.25, 1.25]
-        ) {
-
-            const wheel =
-                new THREE.Mesh(
-                    new THREE.CylinderGeometry(
-                        0.38,
-                        0.38,
-                        0.25,
-                        16
-                    ),
-                    new THREE.MeshStandardMaterial({
-                        color: 0x111111
-                    })
-                );
-
-
-            wheel.rotation.z =
-                Math.PI / 2;
-
-
-            wheel.position.set(
-                x,
-                0.38,
-                z
-            );
-
-
-            playerCar.add(
-                wheel
-            );
-        }
-    }
-
+    playerCar.position.set(
+        0,
+        0,
+        0
+    );
 
     playerCar.visible =
         false;
-
 
     scene.add(
         playerCar
@@ -2123,7 +2614,10 @@ function createPlayerCar() {
 
 function enterCar() {
 
-    if (!gameActive)
+    if (
+        !gameActive ||
+        isBoatMode
+    )
         return;
 
 
@@ -2132,24 +2626,6 @@ function enterCar() {
         createPlayerCar();
     }
 
-
-    if (carMode) {
-
-        carMode = false;
-
-        playerCar.visible =
-            false;
-
-        player.visible =
-            true;
-
-        stopCarSound();
-
-        return;
-    }
-
-
-    carMode = true;
 
     playerCar.position.x =
         player.position.x;
@@ -2174,19 +2650,14 @@ function enterCar() {
 
 function kickFootball() {
 
-    if (!gameActive)
+    if (
+        !gameActive ||
+        isBoatMode
+    )
         return;
 
 
-    if (football) {
-
-        scene.remove(
-            football
-        );
-    }
-
-
-    football =
+    const ball =
         new THREE.Mesh(
             new THREE.SphereGeometry(
                 0.38,
@@ -2199,48 +2670,42 @@ function kickFootball() {
         );
 
 
-    football.position.set(
+    ball.position.set(
         player.position.x,
         0.45,
         -1
     );
 
 
-    scene.add(
-        football
-    );
+    scene.add(ball);
 
 
-    playKickSound();
+    let count = 0;
 
 
-    if (footballTimer) {
-
-        clearInterval(
-            footballTimer
-        );
-    }
-
-
-    footballTimer =
+    const timer =
         setInterval(
             function() {
 
-                if (!football) {
+                if (
+                    !ball ||
+                    count > 80
+                ) {
+
+                    scene.remove(ball);
 
                     clearInterval(
-                        footballTimer
+                        timer
                     );
 
                     return;
                 }
 
 
-                football.position.z -=
+                ball.position.z -=
                     1.7;
 
-
-                football.rotation.x +=
+                ball.rotation.x +=
                     0.3;
 
 
@@ -2252,7 +2717,7 @@ function kickFootball() {
                 ) {
 
                     if (
-                        football.position.distanceTo(
+                        ball.position.distanceTo(
                             obstacles[i].position
                         ) < 2
                     ) {
@@ -2261,12 +2726,10 @@ function kickFootball() {
                             obstacles[i]
                         );
 
-
                         obstacles.splice(
                             i,
                             1
                         );
-
 
                         score += 50;
 
@@ -2275,174 +2738,11 @@ function kickFootball() {
                 }
 
 
-                if (
-                    football.position.z <
-                    -120
-                ) {
-
-                    scene.remove(
-                        football
-                    );
-
-                    football =
-                        null;
-
-                    clearInterval(
-                        footballTimer
-                    );
-                }
+                count++;
 
             },
             30
         );
-}
-
-
-// ============================================================
-// RIVER
-// ============================================================
-
-function enterRiver() {
-
-    gameMode =
-        "river";
-
-    riverTimer = 0;
-
-
-    // Turn road blue
-    scene.background =
-        new THREE.Color(
-            0x65bde8
-        );
-
-
-    // Hide runner
-    player.visible =
-        false;
-
-    police.visible =
-        false;
-
-
-    if (playerCar) {
-
-        playerCar.visible =
-            false;
-    }
-
-
-    if (boat) {
-
-        boat.position.set(
-            0,
-            0.3,
-            0
-        );
-
-        boat.visible =
-            true;
-    }
-
-
-    playBoatSound();
-}
-
-
-// ============================================================
-// BOAT
-// ============================================================
-
-function createBoat() {
-
-    boat =
-        new THREE.Group();
-
-
-    const hull =
-        new THREE.Mesh(
-            new THREE.BoxGeometry(
-                3,
-                0.55,
-                5
-            ),
-            new THREE.MeshStandardMaterial({
-                color: 0x8b4513
-            })
-        );
-
-
-    hull.position.y =
-        0.45;
-
-
-    boat.add(hull);
-
-
-    const seat =
-        new THREE.Mesh(
-            new THREE.BoxGeometry(
-                1.5,
-                0.35,
-                1.5
-            ),
-            new THREE.MeshStandardMaterial({
-                color: 0xeeeeee
-            })
-        );
-
-
-    seat.position.y =
-        0.9;
-
-
-    boat.add(seat);
-
-
-    boat.visible =
-        false;
-
-
-    scene.add(
-        boat
-    );
-}
-
-
-// ============================================================
-// RETURN TO LAND
-// ============================================================
-
-function returnToLand() {
-
-    gameMode =
-        "land";
-
-
-    scene.background =
-        new THREE.Color(
-            0x72c7e8
-        );
-
-
-    if (boat) {
-
-        boat.visible =
-            false;
-    }
-
-
-    player.visible =
-        true;
-
-    police.visible =
-        true;
-
-    police.position.set(
-        0,
-        0,
-        7
-    );
 }
 
 
@@ -2456,7 +2756,9 @@ function setupControls() {
         "keydown",
         function(e) {
 
-            if (!gameActive)
+            if (
+                !gameActive
+            )
                 return;
 
 
@@ -2534,6 +2836,7 @@ function setupControls() {
 
             startY =
                 touch.clientY;
+
         },
         {
             passive: true
@@ -2545,7 +2848,9 @@ function setupControls() {
         "touchend",
         function(e) {
 
-            if (!gameActive)
+            if (
+                !gameActive
+            )
                 return;
 
 
@@ -2589,14 +2894,11 @@ function setupControls() {
                         );
                 }
 
-            } else {
+            } else if (
+                dy < -40
+            ) {
 
-                if (
-                    dy < -40
-                ) {
-
-                    jump();
-                }
+                jump();
             }
         }
     );
@@ -2611,7 +2913,8 @@ function jump() {
 
     if (
         !gameActive ||
-        isJumping
+        isJumping ||
+        isBoatMode
     )
         return;
 
@@ -2621,8 +2924,44 @@ function jump() {
 
     yVelocity =
         jumpForce;
+}
 
-    playJumpSound();
+
+// ============================================================
+// CLEAR OBJECTS
+// ============================================================
+
+function clearObjects() {
+
+    obstacles.forEach(
+        obj =>
+            scene.remove(obj)
+    );
+
+    coins.forEach(
+        obj =>
+            scene.remove(obj)
+    );
+
+    powerUps.forEach(
+        obj =>
+            scene.remove(obj)
+    );
+
+
+    obstacles = [];
+    coins = [];
+    powerUps = [];
+
+
+    if (spawnTimer) {
+
+        clearTimeout(
+            spawnTimer
+        );
+
+        spawnTimer = null;
+    }
 }
 
 
@@ -2637,12 +2976,10 @@ function updateHUD() {
             "score-val"
         );
 
-
     const coinElement =
         document.getElementById(
             "coin-val"
         );
-
 
     const bankedElement =
         document.getElementById(
@@ -2674,16 +3011,60 @@ function updateHUD() {
 }
 
 
+function updateHighScoreDisplay() {
+
+    const menu =
+        document.getElementById(
+            "menu-screen"
+        );
+
+
+    if (!menu)
+        return;
+
+
+    let best =
+        document.getElementById(
+            "best-score"
+        );
+
+
+    if (!best) {
+
+        best =
+            document.createElement(
+                "div"
+            );
+
+        best.id =
+            "best-score";
+
+        best.style.marginTop =
+            "12px";
+
+        best.style.fontWeight =
+            "bold";
+
+        menu.appendChild(best);
+    }
+
+
+    best.innerText =
+        "🏆 BEST SCORE: " +
+        highScore +
+        " | 🔑 REVIVAL: " +
+        revivalKeys;
+}
+
+
 // ============================================================
-// HIDE SCREEN
+// SCREEN HELPERS
 // ============================================================
 
 function hideScreen(id) {
 
     const element =
-        document.getElementById(
-            id
-        );
+        document.getElementById(id);
 
 
     if (element) {
@@ -2703,21 +3084,15 @@ function initAudio() {
 
     if (!audioContext) {
 
-        const AudioCtx =
-            window.AudioContext ||
-            window.webkitAudioContext;
-
-
-        if (AudioCtx) {
-
-            audioContext =
-                new AudioCtx();
-        }
+        audioContext =
+            new (
+                window.AudioContext ||
+                window.webkitAudioContext
+            )();
     }
 
 
     if (
-        audioContext &&
         audioContext.state ===
         "suspended"
     ) {
@@ -2730,31 +3105,30 @@ function initAudio() {
 function playTone(
     frequency,
     duration,
-    type = "sine"
+    type = "sine",
+    volume = 0.08
 ) {
 
     if (!audioContext)
         return;
 
 
-    const oscillator =
+    const osc =
         audioContext.createOscillator();
-
 
     const gain =
         audioContext.createGain();
 
 
-    oscillator.type =
+    osc.type =
         type;
 
-
-    oscillator.frequency.value =
+    osc.frequency.value =
         frequency;
 
 
     gain.gain.setValueAtTime(
-        0.08,
+        volume,
         audioContext.currentTime
     );
 
@@ -2766,20 +3140,16 @@ function playTone(
     );
 
 
-    oscillator.connect(
-        gain
-    );
-
+    osc.connect(gain);
 
     gain.connect(
         audioContext.destination
     );
 
 
-    oscillator.start();
+    osc.start();
 
-
-    oscillator.stop(
+    osc.stop(
         audioContext.currentTime +
         duration
     );
@@ -2794,17 +3164,13 @@ function playCoinSound() {
         "square"
     );
 
-
     setTimeout(
-        function() {
-
+        () =>
             playTone(
                 1300,
                 0.10,
                 "square"
-            );
-
-        },
+            ),
         70
     );
 }
@@ -2813,76 +3179,97 @@ function playCoinSound() {
 function playHitSound() {
 
     playTone(
-        180,
-        0.15,
-        "sawtooth"
+        160,
+        0.18,
+        "sawtooth",
+        0.12
     );
 }
 
 
-function playJumpSound() {
+function playPowerUpSound() {
 
     playTone(
         500,
         0.12,
         "sine"
     );
-}
 
-
-function playKickSound() {
-
-    playTone(
-        240,
-        0.12,
-        "square"
+    setTimeout(
+        () =>
+            playTone(
+                900,
+                0.15,
+                "sine"
+            ),
+        100
     );
 }
 
 
-function playGameOverSound() {
+function playRevivalSound() {
+
+    playTone(
+        500,
+        0.12,
+        "triangle"
+    );
+
+    setTimeout(
+        () =>
+            playTone(
+                900,
+                0.15,
+                "triangle"
+            ),
+        100
+    );
+
+    setTimeout(
+        () =>
+            playTone(
+                1300,
+                0.2,
+                "triangle"
+            ),
+        200
+    );
+}
+
+
+function playTrainSound() {
+
+    if (!audioContext)
+        return;
+
+    playTone(
+        90,
+        0.15,
+        "sawtooth",
+        0.025
+    );
+}
+
+
+function playOceanSound() {
 
     playTone(
         180,
-        0.20,
-        "sawtooth"
-    );
-
-
-    setTimeout(
-        function() {
-
-            playTone(
-                100,
-                0.30,
-                "sawtooth"
-            );
-
-        },
-        160
+        0.3,
+        "sine",
+        0.025
     );
 }
 
 
-function playBoatSound() {
+function playLandReturnSound() {
 
     playTone(
-        120,
-        0.35,
-        "sawtooth"
+        500,
+        0.15,
+        "triangle"
     );
 }
-
-
-// ============================================================
-// CAR SOUND
-// ============================================================
-
-let carSoundOscillator =
-    null;
-
-let carSoundGain =
-    null;
 
 
 function playCarSound() {
@@ -2897,14 +3284,12 @@ function playCarSound() {
     carSoundOscillator =
         audioContext.createOscillator();
 
-
     carSoundGain =
         audioContext.createGain();
 
 
     carSoundOscillator.type =
         "sawtooth";
-
 
     carSoundOscillator.frequency.value =
         85;
@@ -2917,7 +3302,6 @@ function playCarSound() {
     carSoundOscillator.connect(
         carSoundGain
     );
-
 
     carSoundGain.connect(
         audioContext.destination
@@ -2940,7 +3324,6 @@ function stopCarSound() {
 
         } catch (e) {}
 
-
         carSoundOscillator =
             null;
     }
@@ -2948,107 +3331,65 @@ function stopCarSound() {
 
 
 // ============================================================
-// ANIMATION
+// DAY / NIGHT
 // ============================================================
 
-function animate() {
+function updateDayNight() {
 
-    requestAnimationFrame(
-        animate
-    );
-
-
-    const now =
-        performance.now();
+    if (!gameActive)
+        return;
 
 
-    lastTime =
-        now;
+    const cycle =
+        performance.now() /
+        45000;
 
 
-    if (gameActive) {
-
-        updatePlayer();
-
-        updateObjects();
-
-        updatePolice();
+    const phase =
+        cycle %
+        1;
 
 
-        // Environment moves toward player
-        // making it feel like the runner is moving.
-
-        for (
-            let i = 0;
-            i < scenery.length;
-            i++
-        ) {
-
-            const object =
-                scenery[i];
+    let brightness;
 
 
-            if (
-                object !== null
-            ) {
+    if (
+        phase < 0.45
+    ) {
 
-                object.position.z +=
-                    speed;
+        brightness = 1;
 
+    } else if (
+        phase < 0.60
+    ) {
 
-                if (
-                    object.position.z >
-                    30
-                ) {
+        brightness = 0.65;
 
-                    object.position.z -=
-                        1500;
-                }
-            }
-        }
+    } else {
 
-
-        // PLAYER CAR
-        if (
-            carMode &&
-            playerCar
-        ) {
-
-            playerCar.position.x +=
-                (
-                    currentLane *
-                    laneWidth -
-                    playerCar.position.x
-                ) * 0.18;
-        }
-
-
-        // BOAT
-        if (
-            gameMode === "river" &&
-            boat
-        ) {
-
-            boat.position.x =
-                Math.sin(
-                    performance.now() *
-                    0.0015
-                ) * 2;
-
-
-            boat.rotation.z =
-                Math.sin(
-                    performance.now() *
-                    0.002
-                ) * 0.025;
-        }
+        brightness = 0.28;
     }
 
 
-    renderer.render(
-        scene,
-        camera
+    const color =
+        new THREE.Color(
+            0x72c7e8
+        );
+
+
+    color.multiplyScalar(
+        brightness
     );
+
+
+    if (!isBoatMode) {
+
+        scene.background =
+            color;
+
+        scene.fog.color =
+            color;
+    }
 }
 
 
@@ -3081,27 +3422,112 @@ function resizeGame() {
 
 
 // ============================================================
-// START
+// ANIMATION
+// ============================================================
+
+function animate() {
+
+    requestAnimationFrame(
+        animate
+    );
+
+
+    const now =
+        performance.now();
+
+
+    lastFrameTime =
+        now;
+
+
+    if (gameActive) {
+
+        updatePlayer();
+
+        updateBoat();
+
+        updateObjects();
+
+        updatePolice();
+
+        updatePowerUps();
+
+        updateDayNight();
+
+
+        // Move the world toward the player
+
+        if (
+            !isBoatMode
+        ) {
+
+            worldObjects.forEach(
+                obj => {
+
+                    if (
+                        obj.position.z >
+                        20
+                    ) {
+
+                        obj.position.z -=
+                            1600;
+                    }
+                }
+            );
+
+        } else {
+
+            oceanObjects.forEach(
+                obj => {
+
+                    obj.position.z +=
+                        speed * 0.3;
+
+                    if (
+                        obj.position.z >
+                        30
+                    ) {
+
+                        obj.position.z -=
+                            1200;
+                    }
+                }
+            );
+        }
+
+
+        if (
+            playerCar &&
+            playerCar.visible
+        ) {
+
+            playerCar.position.x +=
+                (
+                    currentLane *
+                    laneWidth -
+                    playerCar.position.x
+                ) *
+                0.18;
+        }
+    }
+
+
+    renderer.render(
+        scene,
+        camera
+    );
+}
+
+
+// ============================================================
+// START EVERYTHING
 // ============================================================
 
 window.addEventListener(
     "DOMContentLoaded",
     function() {
 
-        // IMPORTANT:
-        // Initialize the background BEFORE
-        // the user presses TAP TO PLAY.
+        init();
 
-        try {
-
-            init();
-
-        } catch (error) {
-
-            console.error(
-                "Kollins Runner error:",
-                error
-            );
-        }
     }
 );
