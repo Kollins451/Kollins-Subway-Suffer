@@ -2501,3 +2501,187 @@ window.addEventListener(
 
     }
 );
+// ============================================================
+// MOVING BUILDINGS — ADD BELOW YOUR EXISTING CODE
+// ============================================================
+
+const movingBuildings = [];
+
+function createMovingBuilding(x, z, side) {
+
+    const height = 8 + Math.random() * 12;
+    const width = 4 + Math.random() * 4;
+    const depth = 8 + Math.random() * 6;
+
+    const building = new THREE.Group();
+
+    // Main building
+    const body = new THREE.Mesh(
+        new THREE.BoxGeometry(width, height, depth),
+        new THREE.MeshStandardMaterial({
+            color: new THREE.Color(
+                0x555555 +
+                Math.floor(Math.random() * 0x222222)
+            ),
+            roughness: 0.8
+        })
+    );
+
+    body.position.y = height / 2;
+    building.add(body);
+
+    // Windows
+    for (let y = 2; y < height - 1; y += 2) {
+
+        for (let wx = -width / 2 + 0.7;
+             wx < width / 2;
+             wx += 1.2) {
+
+            const windowMesh = new THREE.Mesh(
+                new THREE.BoxGeometry(
+                    0.55,
+                    0.75,
+                    0.05
+                ),
+                new THREE.MeshStandardMaterial({
+                    color: 0x9fd8ff,
+                    emissive: 0x224466,
+                    emissiveIntensity: 0.4
+                })
+            );
+
+            windowMesh.position.set(
+                wx,
+                y,
+                -depth / 2 - 0.03
+            );
+
+            building.add(windowMesh);
+        }
+    }
+
+    building.position.set(
+        x,
+        0,
+        z
+    );
+
+    building.userData.side = side;
+
+    scene.add(building);
+    movingBuildings.push(building);
+}
+
+
+// ============================================================
+// CREATE INITIAL BUILDINGS
+// ============================================================
+
+function createMovingBuildingWorld() {
+
+    // Remove old moving buildings
+    movingBuildings.forEach(
+        building => scene.remove(building)
+    );
+
+    movingBuildings.length = 0;
+
+    // Create buildings far into the world
+    for (let z = -20; z > -1200; z -= 35) {
+
+        createMovingBuilding(
+            -13 - Math.random() * 5,
+            z,
+            "left"
+        );
+
+        createMovingBuilding(
+            13 + Math.random() * 5,
+            z,
+            "right"
+        );
+    }
+}
+
+
+// ============================================================
+// UPDATE BUILDINGS
+// ============================================================
+
+function updateMovingBuildings() {
+
+    if (!gameActive) return;
+
+    movingBuildings.forEach(building => {
+
+        // Move toward the runner
+        building.position.z += speed;
+
+        // When it passes the player,
+        // send it back far into the distance
+        if (building.position.z > 25) {
+
+            building.position.z -= 1200;
+
+            building.position.x =
+                building.userData.side === "left"
+                    ? -13 - Math.random() * 5
+                    : 13 + Math.random() * 5;
+        }
+    });
+}
+
+
+// ============================================================
+// START THE MOVING BUILDING WORLD
+// ============================================================
+
+const oldCreateWorld = createWorld;
+
+createWorld = function() {
+
+    oldCreateWorld();
+
+    createMovingBuildingWorld();
+};
+
+
+// ============================================================
+// ADD BUILDING MOVEMENT TO GAME LOOP
+// ============================================================
+
+const oldAnimate = animate;
+
+animate = function() {
+
+    requestAnimationFrame(animate);
+
+    const now = performance.now();
+    const delta = now - lastFrameTime;
+
+    lastFrameTime = now;
+
+    if (gameActive) {
+
+        updatePlayer(delta);
+        updateObjects();
+        updatePolice();
+
+        // MOVE BUILDINGS
+        updateMovingBuildings();
+
+        if (isDriving && car) {
+
+            car.position.x +=
+                (
+                    currentLane * laneWidth -
+                    car.position.x
+                ) * 0.18;
+        }
+    }
+
+    renderer.render(
+        scene,
+        camera
+    );
+};
