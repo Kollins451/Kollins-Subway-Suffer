@@ -1,233 +1,114 @@
-<!DOCTYPE html>
+
+<!doctype html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-
-    <meta
-        name="viewport"
-        content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"
-    >
-
-    <title>Subway Surfers Web Edition</title>
-
-    <link rel="stylesheet" href="style.css">
-
-    <!-- THREE.JS -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-
-    <!-- YOUR GAME JAVASCRIPT -->
-    <script src="script.js" defer></script>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+  <meta name="theme-color" content="#101a2b">
+  <title>Kollins Runner — 3D Subway Edition</title>
+  <link rel="stylesheet" href="style.css">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js" defer></script>
+  <script src="script.js" defer></script>
 </head>
-
 <body>
+  <div id="game-root">
+    <div id="hud" aria-live="polite">
+      <div class="hud-card score-card">
+        <small>SCORE</small>
+        <strong id="score-val">0</strong>
+      </div>
 
-    <!-- =========================
-         HUD
-    ========================== -->
+      <div class="hud-card coin-card">
+        <small>COINS</small>
+        <strong>
+          <span class="coin-icon">●</span>
+          <span id="coin-val">0</span>
+        </strong>
+      </div>
 
-    <div id="hud">
-
-        <div id="score-box" class="hud-box">
-            SCORE:
-            <span id="score-val">0</span>
-        </div>
-
-        <div id="coin-box" class="hud-box">
-            🪙
-            <span id="coin-val">0</span>
-        </div>
-
+      <div class="hud-card best-card">
+        <small>BEST</small>
+        <strong id="best-val">0</strong>
+      </div>
     </div>
 
+    <div id="status-chip" class="hidden">READY</div>
 
-    <!-- =========================
-         POWER UPS
-    ========================== -->
+    <div id="menu-screen" class="screen">
+      <div class="brand-mark">KR<span>3D</span></div>
+      <p class="eyebrow">KOLLINS RUNNER</p>
 
-    <div id="active-powerups">
+      <h1>RUN THE<br><span>RAILWAY.</span></h1>
 
-        <div id="magnet-timer" class="powerup-bar hidden">
-            MAGNET ACTIVE
-            <div id="magnet-progress" class="progress-fill"></div>
-        </div>
+      <p class="menu-copy">
+        Dodge trains. Collect coins. Beat your best run.
+      </p>
 
-        <div id="jetpack-timer" class="powerup-bar hidden">
-            JETPACK ACTIVE
-            <div id="jetpack-progress" class="progress-fill"></div>
-        </div>
+      <button id="play-btn" class="primary-btn">
+        ▶ START RUN
+      </button>
 
-        <div id="board-timer" class="powerup-bar hidden">
-            HOVERBOARD ACTIVE
-            <div id="board-progress" class="progress-fill"></div>
-        </div>
+      <div class="menu-stats">
+        BANKED COINS
+        <strong id="banked-coins">0</strong>
+      </div>
 
+      <div class="menu-controls">
+        ← → / A D MOVE
+        <span>↑ / SPACE JUMP</span>
+        <span>↓ SLIDE</span>
+      </div>
     </div>
 
+    <div id="pause-screen" class="screen hidden">
+      <p class="eyebrow">RUN PAUSED</p>
+      <h2>Take a breath.</h2>
 
-    <!-- =========================
-         START SCREEN
-    ========================== -->
+      <button id="resume-btn" class="primary-btn">
+        ▶ RESUME
+      </button>
 
-    <div
-        id="menu-screen"
-        class="modal main-menu"
-    >
-
-        <h1>SUBWAY SURFERS</h1>
-
-        <p>Web Edition</p>
-
-        <!-- IMPORTANT:
-             ID MUST BE play-btn
-        -->
-        <button
-            id="play-btn"
-            type="button"
-        >
-            ▶ TAP TO PLAY
-        </button>
-
-        <div>
-            TOTAL BANKED COINS:
-            <span id="banked-coins">0</span>
-        </div>
-
+      <button id="menu-btn" class="secondary-btn">
+        QUIT RUN
+      </button>
     </div>
 
+    <div id="gameover-screen" class="screen hidden">
+      <p class="eyebrow">RUN COMPLETE</p>
+      <h1>WIPEOUT</h1>
 
-    <!-- =========================
-         GAME OVER SCREEN
-    ========================== -->
+      <p id="gameover-message">Score: 0</p>
 
-    <div
-        id="gameover-screen"
-        class="modal hidden"
-    >
+      <button id="retry-btn" class="primary-btn">
+        ↻ RUN AGAIN
+      </button>
 
-        <h1>CAUGHT!</h1>
-
-        <p id="gameover-message">
-            Game Over
-        </p>
-
-        <!-- IMPORTANT:
-             ID MUST BE retry-btn
-        -->
-        <button
-            id="retry-btn"
-            type="button"
-        >
-            🔄 RUN AGAIN
-        </button>
-
+      <button id="gameover-menu-btn" class="secondary-btn">
+        MAIN MENU
+      </button>
     </div>
 
+    <div id="mobile-controls" class="hidden" aria-label="Touch controls">
+      <div class="move-pad">
+        <button data-action="left" aria-label="Move left">‹</button>
+        <button data-action="right" aria-label="Move right">›</button>
+      </div>
 
-    <!-- =========================
-         MOBILE ACTION BUTTONS
-         Your JS can also create
-         these automatically.
-    ========================== -->
+      <div class="action-pad">
+        <button data-action="slide" aria-label="Slide">↓</button>
+        <button data-action="jump" aria-label="Jump">↑</button>
+      </div>
+    </div>
 
-    <div id="mobile-actions"></div>
-
-
-    <!-- =========================
-         CONTROLS
-    ========================== -->
+    <button id="pause-btn" class="pause-btn hidden" aria-label="Pause game">
+      Ⅱ
+    </button>
 
     <div id="controls-hint">
-        Desktop: A/D or Arrows to Move |
-        W/Space to Jump |
-        S to Slide
+      ARROWS / A D MOVE · SPACE / ↑ JUMP · ↓ SLIDE · P PAUSE
     </div>
 
-
-    <!-- =========================
-         FALLBACK BUTTON SCRIPT
-         This guarantees the HTML
-         buttons respond to tapping.
-    ========================== -->
-
-    <script>
-        document.addEventListener("DOMContentLoaded", function () {
-
-            const playButton =
-                document.getElementById("play-btn");
-
-            const retryButton =
-                document.getElementById("retry-btn");
-
-
-            function startGameFromButton(event) {
-
-                if (event) {
-                    event.preventDefault();
-                    event.stopPropagation();
-                }
-
-                if (typeof startGame === "function") {
-                    startGame();
-                } else {
-                    console.error(
-                        "startGame() was not found. Check script.js."
-                    );
-                }
-            }
-
-
-            function restartGameFromButton(event) {
-
-                if (event) {
-                    event.preventDefault();
-                    event.stopPropagation();
-                }
-
-                if (typeof resetGame === "function") {
-                    resetGame();
-                } else if (typeof startGame === "function") {
-                    startGame();
-                } else {
-                    console.error(
-                        "resetGame() / startGame() was not found."
-                    );
-                }
-            }
-
-
-            if (playButton) {
-
-                playButton.addEventListener(
-                    "click",
-                    startGameFromButton
-                );
-
-                playButton.addEventListener(
-                    "touchend",
-                    startGameFromButton,
-                    { passive: false }
-                );
-
-            }
-
-
-            if (retryButton) {
-
-                retryButton.addEventListener(
-                    "click",
-                    restartGameFromButton
-                );
-
-                retryButton.addEventListener(
-                    "touchend",
-                    restartGameFromButton,
-                    { passive: false }
-                );
-
-            }
-
-        });
-    </script>
-
+    <div id="toast" class="hidden"></div>
+  </div>
 </body>
 </html>
